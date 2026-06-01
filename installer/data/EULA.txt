@@ -1,0 +1,43 @@
+END USER LICENSE AGREEMENT (EULA)
+
+By installing or using TunerAccess, you approve the End User License Agreement available below.
+
+This End User License Agreement (hereinafter referred to as "EULA") is a legal agreement between you (the "User") and ReaperAccessible (the "Owner") for the use of TunerAccess (the "Software"). By installing, copying, or using the Software, the User agrees to be bound by the terms and conditions of this EULA.
+
+1. USER LICENSE
+
+Subject to compliance with the terms of this EULA, the Owner, ReaperAccessible, grants the User a non-exclusive license to use the Software.
+
+2. RESTRICTIONS
+
+a) The User may not copy, modify, distribute, sell, or rent the Software, in whole or in part.
+b) The User may not circumvent or attempt to circumvent any security measures integrated into the Software.
+
+3. OWNERSHIP
+
+The Software and all related intellectual property rights remain the exclusive property of ReaperAccessible. This EULA does not grant any ownership rights in the Software except for those expressly provided herein.
+
+4. TERM AND TERMINATION
+
+This EULA becomes effective upon installation of the Software and remains in effect until terminated. ReaperAccessible reserves the right to terminate this EULA at any time in the event of a violation of its terms by the User. Upon termination, the User must cease all use of the Software and destroy all copies in their possession.
+
+5. LIMITATION OF LIABILITY
+
+To the fullest extent permitted by applicable law, ReaperAccessible shall not be liable for any direct, indirect, special, consequential, or punitive damages arising from the use of, or inability to use, the Software.
+
+6. GENERAL PROVISIONS
+
+a) This EULA constitutes the entire agreement between the parties regarding the use of the Software and supersedes all prior or contemporaneous agreements.
+b) This EULA is governed and interpreted in accordance with the laws of Canada. Any dispute arising from this EULA shall be submitted to the exclusive jurisdiction of the courts of the province of Quebec.
+c) If any provision of this EULA is found to be invalid or unenforceable by a court of competent jurisdiction, the remaining provisions shall remain in full force and effect.
+d) The failure of ReaperAccessible to exercise any right or remedy under this EULA shall not constitute a waiver of such right or remedy.
+
+7. CONTACT
+
+If you have any questions regarding this EULA, please contact ReaperAccessible through the official website.
+
+By installing, copying, or using the Software, the User acknowledges having read, understood, and accepted the terms and conditions of this EULA.
+
+TRADEMARK DISCLAIMER
+
+All product names belonging to other manufacturers are trademarks of their respective owners, who are in no way associated or affiliated with ReaperAccessible.

@@ -1,0 +1,48 @@
+# Build artefacts
+build/
+out/
+cmake-build-*/
+.vs/
+*.obj
+*.exe
+*.pdb
+*.exp
+*.lib
+*.map
+*.dll
+*.vst3
+
+# CMake / VS
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+cmake_install.cmake
+Makefile
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.sln
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Installer output (signed binary, regeneratable)
+installer/output/
+
+# JUCE artefact dir (fully regeneratable)
+JuceLibraryCode/
+
+# Logs
+*.log
+
+# Allow the ASIO SDK and NVDA controller client (vendored, needed for build)
+!asiosdk/
+!nvda_2025.3.3_controllerClient/
