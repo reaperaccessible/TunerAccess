@@ -3,7 +3,7 @@
 #include <juce_audio_plugin_client/Standalone/juce_StandaloneFilterWindow.h>
 
 // UIA constants for screen reader notifications
-#ifdef _WIN32
+#if JUCE_WINDOWS
  #ifndef NotificationKind_ActionCompleted
   #define NotificationKind_ActionCompleted 4
  #endif
@@ -35,6 +35,7 @@ private:
     std::function<juce::String()> getTextFn;
 };
 
+#if JUCE_WINDOWS
 //==============================================================================
 // NVDA Controller Client — static singleton
 //==============================================================================
@@ -77,7 +78,6 @@ const NvdaApi& getNvda()
 //==============================================================================
 static void uiaRaiseNotification(const juce::String& message)
 {
-#ifdef _WIN32
     using RaiseNotifFunc = HRESULT(WINAPI*)(void*, int, int, BSTR, BSTR);
 
     static auto* uiaModule = LoadLibraryW(L"UIAutomationCore.dll");
@@ -106,9 +106,6 @@ static void uiaRaiseNotification(const juce::String& message)
                NotificationProcessing_ImportantAll,
                bstr, bstr);
     SysFreeString(bstr);
-#else
-    juce::ignoreUnused(message);
-#endif
 }
 
 //==============================================================================
@@ -139,44 +136,69 @@ static void nvdaSpeakWithPriority(const NvdaApi& nvda, const juce::String& messa
     }
 }
 
+#endif // JUCE_WINDOWS — end of NVDA / UIA Windows-specific block
+
+//==============================================================================
+// Cross-platform screen reader announce wrappers.
+//
+// Windows: route through NVDA Controller Client (or UIA fallback).
+// macOS  : route through juce::AccessibilityHandler::postAnnouncement, which
+//          uses NSAccessibility / VoiceOver under the hood.
+//==============================================================================
 void screenReaderAnnounce(const juce::String& message)
 {
+   #if JUCE_WINDOWS
     auto& nvda = getNvda();
     if (nvda.isNvdaRunning())
         nvdaSpeakWithPriority(nvda, message, kSpeechNormal);
     else
         uiaRaiseNotification(message);
+   #else
+    juce::AccessibilityHandler::postAnnouncement(message,
+        juce::AccessibilityHandler::AnnouncementPriority::medium);
+   #endif
 }
 
 void screenReaderAnnounceNow(const juce::String& message)
 {
+   #if JUCE_WINDOWS
     auto& nvda = getNvda();
     if (nvda.isNvdaRunning())
         nvdaSpeakWithPriority(nvda, message, kSpeechNow);
     else
         uiaRaiseNotification(message);
+   #else
+    juce::AccessibilityHandler::postAnnouncement(message,
+        juce::AccessibilityHandler::AnnouncementPriority::high);
+   #endif
 }
 
 void screenReaderAnnounceInterrupt(const juce::String& message)
 {
-    // speakSsml(NOW) already preempts lower-priority speech cleanly without
-    // destroying the queue. The legacy cancelSpeech+speakText path is handled
-    // inside nvdaSpeakWithPriority for old NVDA versions that lack speakSsml.
-    // See nvda_speech_priority_speakssml.md.
+   #if JUCE_WINDOWS
     auto& nvda = getNvda();
     if (nvda.isNvdaRunning())
         nvdaSpeakWithPriority(nvda, message, kSpeechNow);
     else
         uiaRaiseNotification(message);
+   #else
+    juce::AccessibilityHandler::postAnnouncement(message,
+        juce::AccessibilityHandler::AnnouncementPriority::high);
+   #endif
 }
 
 void screenReaderAnnounceNext(const juce::String& message)
 {
+   #if JUCE_WINDOWS
     auto& nvda = getNvda();
     if (nvda.isNvdaRunning())
         nvdaSpeakWithPriority(nvda, message, kSpeechNext);
     else
         uiaRaiseNotification(message);
+   #else
+    juce::AccessibilityHandler::postAnnouncement(message,
+        juce::AccessibilityHandler::AnnouncementPriority::medium);
+   #endif
 }
 
 void announceValue()

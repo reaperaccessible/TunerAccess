@@ -1,12 +1,21 @@
 #pragma once
 
-#include <windows.h>
+// _WIN32 is defined by the compiler before any JUCE header, so we can safely
+// gate windows.h on it. JUCE_WINDOWS (from juce_core) is only safe AFTER
+// including JuceHeader.h.
+#ifdef _WIN32
+ #include <windows.h>
+#endif
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
 
 //==============================================================================
-// NVDA Controller Client — static singleton (loaded once per process)
+// Screen reader integration.
+//
+// On Windows: NVDA Controller Client DLL provides direct speech + braille.
+// On macOS:   TODO — wire up NSAccessibility / VoiceOver (see README-MAC.md).
 //==============================================================================
+#ifdef _WIN32
 struct NvdaApi
 {
     using SpeakFunc     = long(__stdcall*)(const wchar_t*);
@@ -33,6 +42,7 @@ static constexpr int kSpeechNow       = 2;
 static constexpr int kSymbolUnchanged = -1;
 
 const NvdaApi& getNvda();
+#endif // _WIN32
 
 void screenReaderAnnounce(const juce::String& message);          // NORMAL priority
 void screenReaderAnnounceNow(const juce::String& message);       // NOW priority
