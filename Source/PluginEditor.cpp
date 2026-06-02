@@ -203,10 +203,22 @@ void screenReaderAnnounceNext(const juce::String& message)
 
 void announceValue()
 {
-    if (auto* focused = juce::Component::getCurrentlyFocusedComponent())
-        if (auto* handler = focused->getAccessibilityHandler())
-            if (handler->getValueInterface() != nullptr)
-                handler->notifyAccessibilityEvent(juce::AccessibilityEvent::valueChanged);
+    auto* focused = juce::Component::getCurrentlyFocusedComponent();
+    if (focused == nullptr) return;
+    auto* handler = focused->getAccessibilityHandler();
+    if (handler == nullptr) return;
+    auto* valueIface = handler->getValueInterface();
+    if (valueIface == nullptr) return;
+
+   #if JUCE_WINDOWS
+    handler->notifyAccessibilityEvent(juce::AccessibilityEvent::valueChanged);
+   #else
+    // VoiceOver does not re-speak the value of an already-focused component on
+    // NSAccessibilityValueChangedNotification — say it explicitly.
+    juce::AccessibilityHandler::postAnnouncement(
+        valueIface->getCurrentValueAsString(),
+        juce::AccessibilityHandler::AnnouncementPriority::high);
+   #endif
 }
 
 //==============================================================================

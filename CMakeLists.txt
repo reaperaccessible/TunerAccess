@@ -48,6 +48,10 @@ juce_add_plugin(TunerAccess
     VST3_CATEGORIES            Fx Analyzer
     AU_MAIN_TYPE               kAudioUnitType_Effect
     DESCRIPTION                "Accessible guitar tuner for screen reader users"
+    # macOS microphone permission (no-op on Windows). Without this, macOS
+    # silently denies mic access and never shows the system prompt.
+    MICROPHONE_PERMISSION_ENABLED TRUE
+    MICROPHONE_PERMISSION_TEXT    "TunerAccess needs microphone access to detect the pitch of your instrument."
 )
 
 juce_generate_juce_header(TunerAccess)
