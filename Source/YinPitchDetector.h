@@ -15,7 +15,9 @@ public:
         : bufferSize(bufSize), sampleRate(sr), threshold(thresh)
     {
         halfBuffer = bufferSize / 2;
-        tauMax = static_cast<int>(sampleRate / 60.0f) + 1; // detect down to ~60 Hz
+        // Detect down to ~22 Hz (covers Bb0 = 29.14 Hz, 5-string bass half step down, with margin).
+        // Clamped to halfBuffer below if the buffer is too small for the requested low freq.
+        tauMax = static_cast<int>(sampleRate / 22.0f) + 1;
         if (tauMax > halfBuffer)
             tauMax = halfBuffer;
         yinBuffer.resize(static_cast<size_t>(tauMax + 1), 0.0f);
@@ -24,7 +26,7 @@ public:
     void setSampleRate(float sr)
     {
         sampleRate = sr;
-        tauMax = static_cast<int>(sampleRate / 60.0f) + 1;
+        tauMax = static_cast<int>(sampleRate / 22.0f) + 1;
         if (tauMax > halfBuffer)
             tauMax = halfBuffer;
         yinBuffer.resize(static_cast<size_t>(tauMax + 1), 0.0f);
@@ -97,8 +99,9 @@ public:
         // Step 5: frequency
         float freq = sampleRate / betterTau;
 
-        // Reject out-of-guitar-range
-        if (freq < 55.0f || freq > 420.0f)
+        // Lower bound covers bass guitars (B0 = 30.87 Hz, Bb0 = 29.14 Hz half step down)
+        // with safe margin. Upper bound covers guitar and bass fundamentals.
+        if (freq < 25.0f || freq > 420.0f)
             return -1.0f;
 
         return freq;

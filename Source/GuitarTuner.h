@@ -64,31 +64,84 @@ inline float centsFromTarget(float frequency, int targetMidiNote)
 }
 
 //==============================================================================
-// Tuning presets
+// Tuning presets — variable string count (supports 6-string, 7-string, ...)
 //==============================================================================
 struct TuningPreset
 {
     const char* name;
-    std::array<int, 6> midiNotes;  // string 6 (low) to string 1 (high)
+    std::vector<int> midiNotes;   // ordered from lowest string (highest number) to highest string (string 1)
 };
 
-inline const std::vector<TuningPreset>& getTuningPresets()
+//==============================================================================
+// Instruments — each carries its own list of tunings.
+//==============================================================================
+struct Instrument
 {
-    static const std::vector<TuningPreset> presets = {
-        // name                    6     5     4     3     2     1
-        { "Standard E",         {{ 40,   45,   50,   55,   59,   64  }} },
-        { "Drop D",             {{ 38,   45,   50,   55,   59,   64  }} },
-        { "Open G",             {{ 38,   43,   50,   55,   59,   62  }} },
-        { "Open D",             {{ 38,   45,   50,   54,   57,   62  }} },
-        { "DADGAD",             {{ 38,   45,   50,   55,   57,   62  }} },
-        { "Open E",             {{ 40,   47,   52,   56,   59,   64  }} },
-        { "Half Step Down",     {{ 39,   44,   49,   54,   58,   63  }} },
-        { "Full Step Down",     {{ 38,   43,   48,   53,   57,   62  }} },
+    const char* name;
+    std::vector<TuningPreset> tunings;
+};
+
+inline const std::vector<Instrument>& getInstruments()
+{
+    static const std::vector<Instrument> instruments = {
+        //--------------------------------------------------------------------------
+        // 6-string guitar
+        //--------------------------------------------------------------------------
+        { "6-string guitar",
+          {
+              // name                    string 6     5     4     3     2     1
+              { "Standard E",         {  40,   45,   50,   55,   59,   64 } },
+              { "Drop D",             {  38,   45,   50,   55,   59,   64 } },
+              { "Open G",             {  38,   43,   50,   55,   59,   62 } },
+              { "Open D",             {  38,   45,   50,   54,   57,   62 } },
+              { "DADGAD",             {  38,   45,   50,   55,   57,   62 } },
+              { "Open E",             {  40,   47,   52,   56,   59,   64 } },
+              { "Half Step Down",     {  39,   44,   49,   54,   58,   63 } },
+              { "Full Step Down",     {  38,   43,   48,   53,   57,   62 } },
+          }
+        },
+        //--------------------------------------------------------------------------
+        // 7-string guitar — append-only after this point preserves saved state indices.
+        //--------------------------------------------------------------------------
+        { "7-string guitar",
+          {
+              // name                            string 7  6     5     4     3     2     1
+              { "Standard B",                 {  35,   40,   45,   50,   55,   59,   64 } },
+              { "Drop A",                     {  33,   40,   45,   50,   55,   59,   64 } },
+              { "Standard B half step down",  {  34,   39,   44,   49,   54,   58,   63 } },
+              { "Drop G sharp",               {  32,   40,   45,   50,   55,   59,   64 } },
+          }
+        },
+        //--------------------------------------------------------------------------
+        // Bass guitar — append-only. Note: requires kAnalysisSize >= 4096 to detect
+        // bass fundamentals down to B0 = 30.87 Hz (5- and 6-string standard).
+        //--------------------------------------------------------------------------
+        { "4-string bass guitar",
+          {
+              // name                       string 4   3     2     1
+              { "Standard E",            {  28,   33,   38,   43 } },     // E1 A1 D2 G2
+              { "Drop D",                {  26,   33,   38,   43 } },     // D1 A1 D2 G2
+              { "Half Step Down",        {  27,   32,   37,   42 } },     // Eb1 Ab1 Db2 Gb2
+          }
+        },
+        { "5-string bass guitar",
+          {
+              // name                       string 5   4     3     2     1
+              { "Standard B",            {  23,   28,   33,   38,   43 } }, // B0 E1 A1 D2 G2
+              { "Half Step Down",        {  22,   27,   32,   37,   42 } }, // Bb0 Eb1 Ab1 Db2 Gb2
+          }
+        },
+        { "6-string bass guitar",
+          {
+              // name                       string 6   5     4     3     2     1
+              { "Standard B-C",          {  23,   28,   33,   38,   43,   48 } }, // B0 E1 A1 D2 G2 C3
+          }
+        },
     };
-    return presets;
+    return instruments;
 }
 
-// Free Chromatic is index -1 (no preset selected)
+// Free Chromatic is tuningPresetIndex == -1 in any instrument (no per-string target).
 static constexpr int kFreeChromatic = -1;
 
 //==============================================================================
@@ -97,8 +150,11 @@ static constexpr int kFreeChromatic = -1;
 class TunerEngine
 {
 public:
-    static constexpr int kRingSize = 4096;
-    static constexpr int kAnalysisSize = 2048;
+    // Larger analysis window than a pure guitar tuner would need — supports bass
+    // fundamentals down to B0 (30.87 Hz) and Bb0 (29.14 Hz). At 48 kHz the lowest
+    // detectable freq is sampleRate / halfBuffer = 48000 / 2048 ≈ 23.4 Hz.
+    static constexpr int kRingSize = 8192;
+    static constexpr int kAnalysisSize = 4096;
     static constexpr int kHopSize = 1024;
 
     void prepare(double sampleRate)
@@ -109,7 +165,9 @@ public:
         writePos = 0;
         hopCount = 0;
         silenceSamples = 0;
-        silenceThresholdSamples = static_cast<int>(sr * 0.5f);
+        // Report silence after ~50 ms of quiet so the UI can re-arm quickly for
+        // the next pluck (pluck-to-hear model). Anything from 50 ms up qualifies.
+        silenceThresholdSamples = static_cast<int>(sr * 0.05f);
     }
 
     void process(const float* data, int numSamples)

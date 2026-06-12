@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TunerAccess &mdash; User Manual</title>
+<style>
+body { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; line-height: 1.7; color: #1a1a1a; background: #fafafa; }
+h1 { font-size: 2em; border-bottom: 3px solid #333; padding-bottom: 10px; }
+h2 { font-size: 1.4em; border-bottom: 2px solid #666; padding-bottom: 5px; margin-top: 35px; color: #1a1a2e; }
+h3 { font-size: 1.15em; margin-top: 22px; }
+ul, ol { margin-left: 10px; }
+li { margin-bottom: 6px; }
+table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+th, td { border: 1px solid #b4b4b4; padding: 6px 10px; text-align: left; vertical-align: top; }
+th { background: #e8e8e8; }
+kbd { background: #e8e8e8; border: 1px solid #b4b4b4; border-radius: 3px; padding: 2px 6px; font-family: "Consolas", "Courier New", monospace; font-size: 0.95em; white-space: nowrap; }
+a.skip-link { position: absolute; left: -1000px; }
+a.skip-link:focus { left: 10px; top: 10px; position: fixed; background: #0057b8; color: #fff; padding: 8px 14px; z-index: 1000; }
+footer { margin-top: 40px; border-top: 1px solid #ccc; padding-top: 10px; color: #666; font-size: 0.9em; font-style: italic; }
+.lang-switch { margin-bottom: 20px; font-size: 1em; }
+.lang-switch button { color: #0056b3; font-size: 1em; background: none; border: none; cursor: pointer; padding: 2px 0; text-decoration: underline; }
+.lang-switch button:focus { outline: 3px solid #0056b3; outline-offset: 2px; }
+:focus-visible { outline: 3px solid #0056b3; outline-offset: 2px; }
+@media (forced-colors: active) { kbd, th, td { border: 1px solid ButtonText; } }
+@media print { body { max-width: 100%; padding: 0; } .lang-switch, .skip-link { display: none; } }
+</style>
+<script>
+function switchLang(lang) {
+    document.getElementById('en').style.display = lang === 'en' ? 'block' : 'none';
+    document.getElementById('fr').style.display = lang === 'fr' ? 'block' : 'none';
+    document.documentElement.lang = lang;
+}
+</script>
+</head>
+<body>
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+<div class="lang-switch" role="navigation" aria-label="Language">
+Language<br>
+<button id="btn-en" onclick="switchLang('en')">English</button><br>
+<button id="btn-fr" onclick="switchLang('fr')">Fran&ccedil;ais</button><br>
+</div>
+
+<main id="main">
+
+<!-- ============================ ENGLISH ============================ -->
+<div id="en">
+
+<h1>TunerAccess &mdash; User Manual</h1>
+
+<p>TunerAccess is a fully accessible instrument tuner for guitar and bass, designed first for blind and low-vision musicians using a screen reader (NVDA on Windows, VoiceOver on macOS). It runs as a standalone application and as a VST3 / Audio Unit plugin. Everything is operated from the keyboard and spoken aloud &mdash; no sight required.</p>
+
+<h2>1. Getting started</h2>
+<ol>
+<li>Launch the TunerAccess standalone application. Your screen reader announces <em>&ldquo;Guitar Tuner&rdquo;</em> and the current instrument and tuning.</li>
+<li>Open the audio settings with <kbd>F10</kbd> and choose your audio driver, device, output pair, sample rate and buffer size. On Windows, ASIO is available for the lowest latency.</li>
+<li>Connect your guitar or bass (audio interface, or a microphone for an acoustic instrument) and choose the input on the Input panel (press <kbd>Tab</kbd> to reach it).</li>
+<li>Press <kbd>Enter</kbd> to start the tuner, play a string, and listen.</li>
+</ol>
+
+<h2>2. The two panels</h2>
+<p>Press <kbd>Tab</kbd> and <kbd>Shift+Tab</kbd> to move between two panels:</p>
+<ul>
+<li><strong>Tuner</strong> &mdash; choose the instrument, the tuning, and the target string; start and stop tuning.</li>
+<li><strong>Input</strong> &mdash; choose which of your two named inputs is active, set its gain, and pick its device channel.</li>
+</ul>
+
+<h2>3. The Tuner panel</h2>
+<p>Inside the Tuner, <kbd>Left</kbd> and <kbd>Right</kbd> move between three fields, and <kbd>Up</kbd> / <kbd>Down</kbd> change the value of the current field:</p>
+<ul>
+<li><strong>Instrument</strong> &mdash; 6-string guitar, 7-string guitar, 4-string bass, 5-string bass, 6-string bass.</li>
+<li><strong>Tuning</strong> &mdash; the tunings available for the chosen instrument, plus Free Chromatic.</li>
+<li><strong>String</strong> &mdash; the target string. String 6 (or 7, 5, 4&hellip;) is the lowest; string 1 is the highest.</li>
+</ul>
+<p>Press <kbd>Enter</kbd> to start or stop the tuner.</p>
+
+<h3>How tuning is announced</h3>
+<p>TunerAccess uses a &ldquo;pluck-to-hear&rdquo; model so the speech does not chatter. While a string rings, the tuner is silent. When the string stops, the tuner re-arms; the next time you play, it announces the reading <strong>once</strong>, for example <em>&ldquo;E2, sharp 3 cents, tune down&rdquo;</em>. To get an updated reading after turning the tuning peg, play the string again. When you are within about &plusmn;2.5 cents, it says <em>&ldquo;tuned&rdquo;</em>.</p>
+
+<h3>The in-tune lock tone</h3>
+<p>Press <kbd>T</kbd> to turn on the lock tone. From then on, a steady 880 Hz tone sounds <strong>while</strong> the string is in tune &mdash; the audio equivalent of a strobe tuner&rsquo;s lock or a pedal tuner&rsquo;s green light. Play a string and turn the peg until the tone appears and stays; that is your in-tune lock. The tone uses the same range as the spoken &ldquo;tuned&rdquo;. Press <kbd>T</kbd> again to turn it off. The setting is remembered between sessions.</p>
+
+<h2>4. The Input panel</h2>
+<p>TunerAccess has two named input slots &mdash; for example &ldquo;Electric&rdquo; on one channel and &ldquo;Mic&rdquo; on another. Only the active input passes signal; the other is muted.</p>
+<ul>
+<li><kbd>Up</kbd> / <kbd>Down</kbd> &mdash; switch between Input 1 and Input 2.</li>
+<li><kbd>Left</kbd> / <kbd>Right</kbd> &mdash; switch between the Gain field and the Device channel field.</li>
+<li><kbd>Alt+Up</kbd> / <kbd>Alt+Down</kbd> &mdash; adjust the current field: gain by 0.5 dB, or move to the next / previous device channel.</li>
+<li><kbd>Shift+Alt+Up</kbd> / <kbd>Shift+Alt+Down</kbd> &mdash; adjust the gain in larger 3 dB steps.</li>
+<li><kbd>F2</kbd> &mdash; rename the active input. Type the new name, then <kbd>Enter</kbd> to confirm or <kbd>Escape</kbd> to cancel.</li>
+</ul>
+<p>The selected input is passed through to your output so you can monitor it, and all input settings are saved automatically.</p>
+
+<h2>5. Keyboard reference</h2>
+
+<h3>Tuner panel</h3>
+<table>
+<tr><th>Key</th><th>Action</th></tr>
+<tr><td><kbd>Left</kbd> / <kbd>Right</kbd></td><td>Move between Instrument, Tuning, and String</td></tr>
+<tr><td><kbd>Up</kbd> / <kbd>Down</kbd></td><td>Change the value of the current field</td></tr>
+<tr><td><kbd>Ctrl+Up</kbd> / <kbd>Ctrl+Down</kbd></td><td>Quick string change from any field</td></tr>
+<tr><td><kbd>Home</kbd> / <kbd>End</kbd></td><td>First or last item in the current field</td></tr>
+<tr><td><kbd>Enter</kbd></td><td>Start or stop the tuner</td></tr>
+<tr><td><kbd>T</kbd></td><td>Toggle the in-tune lock tone</td></tr>
+<tr><td><kbd>H</kbd></td><td>Speak the help</td></tr>
+<tr><td><kbd>F10</kbd></td><td>Open the audio settings</td></tr>
+</table>
+
+<h3>Input panel</h3>
+<table>
+<tr><th>Key</th><th>Action</th></tr>
+<tr><td><kbd>Up</kbd> / <kbd>Down</kbd></td><td>Switch active input (1 or 2)</td></tr>
+<tr><td><kbd>Left</kbd> / <kbd>Right</kbd></td><td>Switch between Gain and Device channel</td></tr>
+<tr><td><kbd>Alt+Up</kbd> / <kbd>Alt+Down</kbd></td><td>Adjust gain (0.5 dB) or device channel</td></tr>
+<tr><td><kbd>Shift+Alt+Up</kbd> / <kbd>Shift+Alt+Down</kbd></td><td>Adjust gain in 3 dB steps</td></tr>
+<tr><td><kbd>F2</kbd></td><td>Rename the active input</td></tr>
+</table>
+
+<h3>Audio settings (F10)</h3>
+<table>
+<tr><th>Key</th><th>Action</th></tr>
+<tr><td><kbd>Tab</kbd> / <kbd>Shift+Tab</kbd></td><td>Move between the settings</td></tr>
+<tr><td><kbd>Alt+Down</kbd></td><td>Open a list</td></tr>
+<tr><td><kbd>Up</kbd> / <kbd>Down</kbd></td><td>Browse the list</td></tr>
+<tr><td><kbd>Enter</kbd></td><td>Confirm a selection</td></tr>
+<tr><td><kbd>Escape</kbd> or <kbd>Alt+F4</kbd></td><td>Close the settings (returns to the tuner)</td></tr>
+</table>
+
+<h2>6. Tips</h2>
+<ul>
+<li>For a fast, accurate tune: play the string, listen to the spoken cents, turn the peg, then play again to confirm.</li>
+<li>Turn on the lock tone (<kbd>T</kbd>) for hands-free confirmation while you turn the peg &mdash; tune until the tone holds steady.</li>
+<li>Set up Input 1 for your electric (line in) and Input 2 for a microphone (acoustic), each with its own gain, and switch between them with <kbd>Up</kbd> / <kbd>Down</kbd> on the Input panel.</li>
+</ul>
+
+</div>
+
+<!-- ============================ FRAN&Ccedil;AIS ============================ -->
+<div id="fr" style="display:none">
+
+<h1>TunerAccess &mdash; Manuel de l&rsquo;utilisateur</h1>
+
+<p>TunerAccess est un accordeur enti&egrave;rement accessible pour guitare et basse, con&ccedil;u d&rsquo;abord pour les musiciens aveugles et malvoyants utilisant un lecteur d&rsquo;&eacute;cran (NVDA sous Windows, VoiceOver sous macOS). Il fonctionne en application autonome et en greffon VST3 / Audio Unit. Tout se pilote au clavier et tout est annonc&eacute; vocalement &mdash; aucune vue n&rsquo;est requise.</p>
+
+<h2>1. Premiers pas</h2>
+<ol>
+<li>Lancez l&rsquo;application autonome TunerAccess. Votre lecteur d&rsquo;&eacute;cran annonce <em>&laquo;&nbsp;Guitar Tuner&nbsp;&raquo;</em> ainsi que l&rsquo;instrument et l&rsquo;accordage actuels.</li>
+<li>Ouvrez les r&eacute;glages audio avec <kbd>F10</kbd> et choisissez votre pilote audio, p&eacute;riph&eacute;rique, paire de sortie, taux d&rsquo;&eacute;chantillonnage et taille de m&eacute;moire tampon. Sous Windows, ASIO offre la latence la plus faible.</li>
+<li>Branchez votre guitare ou basse (interface audio, ou un microphone pour un instrument acoustique) et choisissez l&rsquo;entr&eacute;e dans le panneau Entr&eacute;e (appuyez sur <kbd>Tab</kbd> pour y aller).</li>
+<li>Appuyez sur <kbd>Entr&eacute;e</kbd> pour d&eacute;marrer l&rsquo;accordeur, jouez une corde, et &eacute;coutez.</li>
+</ol>
+
+<h2>2. Les deux panneaux</h2>
+<p>Appuyez sur <kbd>Tab</kbd> et <kbd>Maj+Tab</kbd> pour passer entre deux panneaux&nbsp;:</p>
+<ul>
+<li><strong>Accordeur</strong> &mdash; choisissez l&rsquo;instrument, l&rsquo;accordage et la corde cible&nbsp;; d&eacute;marrez et arr&ecirc;tez l&rsquo;accordage.</li>
+<li><strong>Entr&eacute;e</strong> &mdash; choisissez laquelle de vos deux entr&eacute;es nomm&eacute;es est active, r&eacute;glez son gain et choisissez son canal de p&eacute;riph&eacute;rique.</li>
+</ul>
+
+<h2>3. Le panneau Accordeur</h2>
+<p>Dans l&rsquo;accordeur, <kbd>Gauche</kbd> et <kbd>Droite</kbd> d&eacute;placent entre trois champs, et <kbd>Haut</kbd> / <kbd>Bas</kbd> changent la valeur du champ courant&nbsp;:</p>
+<ul>
+<li><strong>Instrument</strong> &mdash; guitare 6 cordes, guitare 7 cordes, basse 4 cordes, basse 5 cordes, basse 6 cordes.</li>
+<li><strong>Accordage</strong> &mdash; les accordages disponibles pour l&rsquo;instrument choisi, plus le Chromatique libre.</li>
+<li><strong>Corde</strong> &mdash; la corde cible. La corde 6 (ou 7, 5, 4&hellip;) est la plus grave&nbsp;; la corde 1 est la plus aigu&euml;.</li>
+</ul>
+<p>Appuyez sur <kbd>Entr&eacute;e</kbd> pour d&eacute;marrer ou arr&ecirc;ter l&rsquo;accordeur.</p>
+
+<h3>Comment l&rsquo;accordage est annonc&eacute;</h3>
+<p>TunerAccess utilise un mod&egrave;le &laquo;&nbsp;jouer pour entendre&nbsp;&raquo; afin que la parole ne soit pas bavarde. Pendant qu&rsquo;une corde r&eacute;sonne, l&rsquo;accordeur est silencieux. Quand la corde s&rsquo;arr&ecirc;te, l&rsquo;accordeur se r&eacute;arme&nbsp;; la prochaine fois que vous jouez, il annonce la lecture <strong>une seule fois</strong>, par exemple <em>&laquo;&nbsp;E2, sharp 3 cents, tune down&nbsp;&raquo;</em>. Pour obtenir une lecture &agrave; jour apr&egrave;s avoir tourn&eacute; la m&eacute;canique, rejouez la corde. Quand vous &ecirc;tes &agrave; environ &plusmn;2,5 cents, il dit <em>&laquo;&nbsp;tuned&nbsp;&raquo;</em>.</p>
+
+<h3>La tonalit&eacute; de verrouillage</h3>
+<p>Appuyez sur <kbd>T</kbd> pour activer la tonalit&eacute; de verrouillage. D&egrave;s lors, une tonalit&eacute; continue de 880 Hz sonne <strong>tant que</strong> la corde est accord&eacute;e &mdash; l&rsquo;&eacute;quivalent audio du verrouillage d&rsquo;un accordeur &agrave; stroboscope ou de la LED verte d&rsquo;une p&eacute;dale. Jouez une corde et tournez la m&eacute;canique jusqu&rsquo;&agrave; ce que la tonalit&eacute; apparaisse et tienne&nbsp;; c&rsquo;est votre verrouillage d&rsquo;accord. La tonalit&eacute; utilise la m&ecirc;me plage que le &laquo;&nbsp;tuned&nbsp;&raquo; vocal. Appuyez de nouveau sur <kbd>T</kbd> pour la d&eacute;sactiver. Le r&eacute;glage est m&eacute;moris&eacute; entre les sessions.</p>
+
+<h2>4. Le panneau Entr&eacute;e</h2>
+<p>TunerAccess a deux entr&eacute;es nomm&eacute;es &mdash; par exemple &laquo;&nbsp;&Eacute;lectrique&nbsp;&raquo; sur un canal et &laquo;&nbsp;Micro&nbsp;&raquo; sur un autre. Seule l&rsquo;entr&eacute;e active laisse passer le signal&nbsp;; l&rsquo;autre est coup&eacute;e.</p>
+<ul>
+<li><kbd>Haut</kbd> / <kbd>Bas</kbd> &mdash; basculer entre Entr&eacute;e 1 et Entr&eacute;e 2.</li>
+<li><kbd>Gauche</kbd> / <kbd>Droite</kbd> &mdash; basculer entre le champ Gain et le champ Canal de p&eacute;riph&eacute;rique.</li>
+<li><kbd>Alt+Haut</kbd> / <kbd>Alt+Bas</kbd> &mdash; r&eacute;gler le champ courant&nbsp;: le gain par 0,5 dB, ou passer au canal suivant / pr&eacute;c&eacute;dent.</li>
+<li><kbd>Maj+Alt+Haut</kbd> / <kbd>Maj+Alt+Bas</kbd> &mdash; r&eacute;gler le gain par pas plus grands de 3 dB.</li>
+<li><kbd>F2</kbd> &mdash; renommer l&rsquo;entr&eacute;e active. Tapez le nouveau nom, puis <kbd>Entr&eacute;e</kbd> pour confirmer ou <kbd>&Eacute;chap</kbd> pour annuler.</li>
+</ul>
+<p>L&rsquo;entr&eacute;e s&eacute;lectionn&eacute;e est renvoy&eacute;e vers votre sortie pour pouvoir l&rsquo;&eacute;couter, et tous les r&eacute;glages d&rsquo;entr&eacute;e sont sauvegard&eacute;s automatiquement.</p>
+
+<h2>5. R&eacute;f&eacute;rence clavier</h2>
+
+<h3>Panneau Accordeur</h3>
+<table>
+<tr><th>Touche</th><th>Action</th></tr>
+<tr><td><kbd>Gauche</kbd> / <kbd>Droite</kbd></td><td>Se d&eacute;placer entre Instrument, Accordage et Corde</td></tr>
+<tr><td><kbd>Haut</kbd> / <kbd>Bas</kbd></td><td>Changer la valeur du champ courant</td></tr>
+<tr><td><kbd>Ctrl+Haut</kbd> / <kbd>Ctrl+Bas</kbd></td><td>Changement rapide de corde depuis n&rsquo;importe quel champ</td></tr>
+<tr><td><kbd>Origine</kbd> / <kbd>Fin</kbd></td><td>Premier ou dernier &eacute;l&eacute;ment du champ courant</td></tr>
+<tr><td><kbd>Entr&eacute;e</kbd></td><td>D&eacute;marrer ou arr&ecirc;ter l&rsquo;accordeur</td></tr>
+<tr><td><kbd>T</kbd></td><td>Activer / d&eacute;sactiver la tonalit&eacute; de verrouillage</td></tr>
+<tr><td><kbd>H</kbd></td><td>&Eacute;noncer l&rsquo;aide</td></tr>
+<tr><td><kbd>F10</kbd></td><td>Ouvrir les r&eacute;glages audio</td></tr>
+</table>
+
+<h3>Panneau Entr&eacute;e</h3>
+<table>
+<tr><th>Touche</th><th>Action</th></tr>
+<tr><td><kbd>Haut</kbd> / <kbd>Bas</kbd></td><td>Basculer l&rsquo;entr&eacute;e active (1 ou 2)</td></tr>
+<tr><td><kbd>Gauche</kbd> / <kbd>Droite</kbd></td><td>Basculer entre Gain et Canal de p&eacute;riph&eacute;rique</td></tr>
+<tr><td><kbd>Alt+Haut</kbd> / <kbd>Alt+Bas</kbd></td><td>R&eacute;gler le gain (0,5 dB) ou le canal</td></tr>
+<tr><td><kbd>Maj+Alt+Haut</kbd> / <kbd>Maj+Alt+Bas</kbd></td><td>R&eacute;gler le gain par pas de 3 dB</td></tr>
+<tr><td><kbd>F2</kbd></td><td>Renommer l&rsquo;entr&eacute;e active</td></tr>
+</table>
+
+<h3>R&eacute;glages audio (F10)</h3>
+<table>
+<tr><th>Touche</th><th>Action</th></tr>
+<tr><td><kbd>Tab</kbd> / <kbd>Maj+Tab</kbd></td><td>Se d&eacute;placer entre les r&eacute;glages</td></tr>
+<tr><td><kbd>Alt+Bas</kbd></td><td>Ouvrir une liste</td></tr>
+<tr><td><kbd>Haut</kbd> / <kbd>Bas</kbd></td><td>Parcourir la liste</td></tr>
+<tr><td><kbd>Entr&eacute;e</kbd></td><td>Confirmer une s&eacute;lection</td></tr>
+<tr><td><kbd>&Eacute;chap</kbd> ou <kbd>Alt+F4</kbd></td><td>Fermer les r&eacute;glages (retour &agrave; l&rsquo;accordeur)</td></tr>
+</table>
+
+<h2>6. Astuces</h2>
+<ul>
+<li>Pour un accord rapide et juste&nbsp;: jouez la corde, &eacute;coutez les cents annonc&eacute;s, tournez la m&eacute;canique, puis rejouez pour confirmer.</li>
+<li>Activez la tonalit&eacute; de verrouillage (<kbd>T</kbd>) pour une confirmation mains libres pendant que vous tournez la m&eacute;canique &mdash; accordez jusqu&rsquo;&agrave; ce que la tonalit&eacute; tienne.</li>
+<li>Configurez l&rsquo;Entr&eacute;e 1 pour votre &eacute;lectrique (entr&eacute;e ligne) et l&rsquo;Entr&eacute;e 2 pour un microphone (acoustique), chacune avec son propre gain, et basculez entre elles avec <kbd>Haut</kbd> / <kbd>Bas</kbd> dans le panneau Entr&eacute;e.</li>
+</ul>
+
+</div>
+
+</main>
+
+<footer>
+TunerAccess &mdash; ReaperAccessible
+</footer>
+
+</body>
+</html>

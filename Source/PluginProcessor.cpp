@@ -70,6 +70,100 @@ void TunerAccessAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
     for (int c = 0; c < numChannels; ++c)
         std::memcpy(buffer.getWritePointer(c), mono.getData(),
                     sizeof(float) * static_cast<size_t>(numSamples));
+
+    // Mix the in-tune lock tone on top of the monitored signal.
+    renderLockTone(buffer);
+}
+
+void TunerAccessAudioProcessor::renderLockTone(juce::AudioBuffer<float>& buffer)
+{
+    const int numChannels = buffer.getNumChannels();
+    const int numSamples  = buffer.getNumSamples();
+    const double sr = getSampleRate() > 0.0 ? getSampleRate() : 48000.0;
+
+    // ----- Decide whether the tone should sound (per block) -----
+    bool gateOn = false;
+
+    if (tunerEngine.active.load(std::memory_order_relaxed)
+        && lockToneEnabled.load(std::memory_order_relaxed))
+    {
+        float freq = tunerEngine.detectedFrequency.load(std::memory_order_relaxed);
+
+        if (freq > 0.0f)
+        {
+            // Cents to target: explicit note in guided mode, nearest note in chromatic.
+            float cents = 1000.0f;
+            if (lockGuided.load(std::memory_order_relaxed))
+            {
+                int target = lockTargetMidi.load(std::memory_order_relaxed);
+                if (target >= 0)
+                    cents = centsFromTarget(freq, target);
+            }
+            else
+            {
+                auto note = frequencyToNote(freq);
+                if (note.valid)
+                    cents = note.centsDeviation;
+            }
+
+            // Prime on the first valid frame of a note so the tone can latch
+            // immediately on an in-tune note instead of crawling down from 1000
+            // over ~2 s. Then smooth (tau ~0.25 s) to survive ~1 cent jitter.
+            if (!lockPrimed)
+            {
+                lockSmoothedCents = std::abs(cents);
+                lockPrimed = true;
+            }
+            else
+            {
+                float coeff = 1.0f - std::exp(-static_cast<float>(numSamples) / (static_cast<float>(sr) * 0.25f));
+                lockSmoothedCents += (std::abs(cents) - lockSmoothedCents) * coeff;
+            }
+
+            // Hysteresis: latch ON within ±2.5 cents (the same window NVDA calls
+            // "tuned"), release only at >=3.0 cents so it doesn't flicker at the edge.
+            if (lockLatched)
+                gateOn = (lockSmoothedCents <= 3.0f);
+            else
+                gateOn = (lockSmoothedCents <= 2.5f);
+            lockLatched = gateOn;
+        }
+        else
+        {
+            // Silence — re-prime on the next note; don't hold a stale value.
+            lockLatched = false;
+            lockPrimed  = false;
+        }
+    }
+    else
+    {
+        lockLatched = false;
+    }
+
+    // ----- Synthesize: persistent-phase 880 Hz sine with a click-free envelope -----
+    // Skip entirely when off and already silent (no CPU, no clicks).
+    if (!gateOn && lockEnv < 1.0e-4f)
+    {
+        lockEnv = 0.0f;
+        return;
+    }
+
+    const float  targetEnv = gateOn ? 1.0f : 0.0f;
+    const float  envCoeff  = 1.0f - std::exp(-1.0f / (0.008f * static_cast<float>(sr))); // ~8 ms ramp
+    const float  amp       = juce::Decibels::decibelsToGain(-15.0f);
+    const double phaseInc  = 2.0 * juce::MathConstants<double>::pi * 880.0 / sr;
+
+    for (int i = 0; i < numSamples; ++i)
+    {
+        lockEnv += (targetEnv - lockEnv) * envCoeff;
+        float s = static_cast<float>(std::sin(lockPhase)) * amp * lockEnv;
+        lockPhase += phaseInc;
+        if (lockPhase >= 2.0 * juce::MathConstants<double>::pi)
+            lockPhase -= 2.0 * juce::MathConstants<double>::pi;
+
+        for (int c = 0; c < numChannels; ++c)
+            buffer.getWritePointer(c)[i] += s;
+    }
 }
 
 juce::AudioProcessorEditor* TunerAccessAudioProcessor::createEditor()
@@ -153,7 +247,11 @@ void TunerAccessAudioProcessor::setPresetDeviceChannel(int presetIdx, int channe
 void TunerAccessAudioProcessor::getStateInformation(juce::MemoryBlock& dest)
 {
     juce::ValueTree state("TunerAccessState");
-    state.setProperty("activeInput", activeInputIndex.load(std::memory_order_relaxed), nullptr);
+    state.setProperty("activeInput",       activeInputIndex.load(std::memory_order_relaxed), nullptr);
+    state.setProperty("instrumentIndex",   savedInstrumentIndex,   nullptr);
+    state.setProperty("tuningPresetIndex", savedTuningPresetIndex, nullptr);
+    state.setProperty("currentString",     savedCurrentString,     nullptr);
+    state.setProperty("lockToneEnabled",   lockToneEnabled.load(std::memory_order_relaxed), nullptr);
 
     for (int i = 0; i < 2; ++i)
     {
@@ -179,6 +277,12 @@ void TunerAccessAudioProcessor::setStateInformation(const void* data, int sizeIn
 
     activeInputIndex.store(juce::jlimit(0, 1, (int) state.getProperty("activeInput", 0)),
                            std::memory_order_relaxed);
+
+    // Tuner UI state — default 0 if absent (old save files stay valid).
+    savedInstrumentIndex   = (int) state.getProperty("instrumentIndex",   0);
+    savedTuningPresetIndex = (int) state.getProperty("tuningPresetIndex", 0);
+    savedCurrentString     = (int) state.getProperty("currentString",     0);
+    lockToneEnabled.store((bool) state.getProperty("lockToneEnabled", false), std::memory_order_relaxed);
 
     for (auto child : state)
     {

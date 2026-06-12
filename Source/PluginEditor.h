@@ -65,6 +65,10 @@ public:
     // Has no effect outside of Standalone mode.
     void openAudioSettings();
 
+    // Opens the HTML user manual in the default browser (F1). Works in both
+    // standalone and plugin — searches several known locations for the file.
+    void openManual();
+
     std::unique_ptr<juce::AccessibilityHandler> createAccessibilityHandler() override;
     void focusGained(FocusChangeType) override;
 
@@ -81,30 +85,85 @@ public:
     class TunerComponent : public juce::Component, private juce::Timer
     {
     public:
-        TunerComponent(TunerAccessAudioProcessorEditor& e) : editor(e) {}
+        TunerComponent(TunerAccessAudioProcessorEditor& e) : editor(e)
+        {
+            // Pull persisted tuner UI state from the processor.
+            auto& proc = e.processorRef;
+            auto& instruments = getInstruments();
+            instrumentIndex = juce::jlimit(0, static_cast<int>(instruments.size()) - 1,
+                                            proc.savedInstrumentIndex);
+            int numTunings = static_cast<int>(instruments[static_cast<size_t>(instrumentIndex)].tunings.size());
+            tuningPresetIndex = (proc.savedTuningPresetIndex == kFreeChromatic)
+                ? kFreeChromatic
+                : juce::jlimit(0, numTunings - 1, proc.savedTuningPresetIndex);
+            int n = (tuningPresetIndex == kFreeChromatic) ? 1
+                  : static_cast<int>(instruments[static_cast<size_t>(instrumentIndex)]
+                                     .tunings[static_cast<size_t>(tuningPresetIndex)].midiNotes.size());
+            currentString = juce::jlimit(0, juce::jmax(0, n - 1), proc.savedCurrentString);
+        }
         ~TunerComponent() override { stopTimer(); }
         bool keyPressed(const juce::KeyPress& key) override;
         void focusGained(FocusChangeType) override;
         std::unique_ptr<juce::AccessibilityHandler> createAccessibilityHandler() override;
 
-        int tuningPresetIndex = 0;   // 0-7 = presets, -1 = Free Chromatic
-        int currentString = 0;       // 0-5 (string 6 to string 1)
+        int instrumentIndex = 0;     // 0 = 6-string, 1 = 7-string, ...
+        int tuningPresetIndex = 0;   // index in the active instrument's tunings list, or -1 for Free Chromatic
+        int currentString = 0;       // 0 = lowest (string N), N-1 = highest (string 1)
         bool tunerActive = false;
 
         juce::String getCurrentText() const;
         juce::String getStringText() const;
         void deactivate() { if (tunerActive) { tunerActive = false; stopTimer(); } }
+        void pushStateToProcessor()
+        {
+            auto& p = editor.processorRef;
+            p.savedInstrumentIndex   = instrumentIndex;
+            p.savedTuningPresetIndex = tuningPresetIndex;
+            p.savedCurrentString     = currentString;
+
+            // Publish the lock-tone target for the audio thread.
+            if (tuningPresetIndex == kFreeChromatic)
+            {
+                p.setLockTarget(-1, false);   // chromatic: audio thread uses nearest note
+            }
+            else
+            {
+                auto& instruments = getInstruments();
+                int ii = juce::jlimit(0, static_cast<int>(instruments.size()) - 1, instrumentIndex);
+                auto& tunings = instruments[static_cast<size_t>(ii)].tunings;
+                int ti = juce::jlimit(0, static_cast<int>(tunings.size()) - 1, tuningPresetIndex);
+                auto& preset = tunings[static_cast<size_t>(ti)];
+                int numStrings = static_cast<int>(preset.midiNotes.size());
+                int cs = juce::jlimit(0, numStrings - 1, currentString);
+                p.setLockTarget(preset.midiNotes[static_cast<size_t>(cs)], true);
+            }
+        }
 
     private:
         void timerCallback() override;
-        void buildAnnouncement(float freq);
+        void buildAnnouncement(float freq, bool doSpeak);
         void announceHelp();
-        TunerAccessAudioProcessorEditor& editor;
-        float lastAnnouncedFreq = -1.0f;
-        float smoothedCents = 0.0f;
-        int announceThrottle = 0;
 
-        // Navigation state: 0 = tuning preset combo, 1 = string selector
+        // Pluck-to-hear model: stay silent while a note rings. After >=50 ms of
+        // silence the engine reports -1 and we re-arm (noteArmed = true). On the
+        // next pluck we wait ~120 ms for the attack transient to settle, then
+        // announce the pitch exactly once and go silent until the next silence.
+        void resetForNextNote()
+        {
+            smoothedCents = 0.0f;
+            inAttack      = false;
+            attackPrimed  = false;
+            noteArmed     = true;
+        }
+
+        TunerAccessAudioProcessorEditor& editor;
+        float  smoothedCents = 0.0f;
+        bool   noteArmed    = true;     // ready to announce on the next pluck
+        bool   inAttack     = false;    // inside the post-attack stabilization window
+        bool   attackPrimed = false;    // first valid frame of this attack seen
+        double attackStartMs = 0.0;     // timestamp (ms) when the current attack began
+
+        // Navigation state: 0 = instrument, 1 = tuning preset, 2 = string selector
         int navField = 0;
     };
 

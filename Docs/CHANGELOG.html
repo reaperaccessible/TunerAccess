@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TunerAccess &mdash; Changelog</title>
+<style>
+body { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; line-height: 1.7; color: #1a1a1a; background: #fafafa; }
+h1 { font-size: 2em; border-bottom: 3px solid #333; padding-bottom: 10px; }
+h2 { font-size: 1.4em; border-bottom: 2px solid #666; padding-bottom: 5px; margin-top: 35px; color: #1a1a2e; }
+h3 { font-size: 1.1em; margin-top: 20px; }
+ul { margin-left: 10px; }
+li { margin-bottom: 6px; }
+kbd { background: #e8e8e8; border: 1px solid #b4b4b4; border-radius: 3px; padding: 2px 6px; font-family: "Consolas", "Courier New", monospace; font-size: 0.95em; white-space: nowrap; }
+footer { margin-top: 40px; border-top: 1px solid #ccc; padding-top: 10px; color: #666; font-size: 0.9em; font-style: italic; }
+.lang-switch { margin-bottom: 20px; font-size: 1em; }
+.lang-switch button { color: #0056b3; font-size: 1em; background: none; border: none; cursor: pointer; padding: 2px 0; text-decoration: underline; }
+.lang-switch button:focus { outline: 3px solid #0056b3; outline-offset: 2px; }
+:focus-visible { outline: 3px solid #0056b3; outline-offset: 2px; }
+@media (forced-colors: active) { kbd { border: 1px solid ButtonText; } }
+@media print { body { max-width: 100%; padding: 0; } .lang-switch { display: none; } }
+</style>
+<script>
+function switchLang(lang) {
+    document.getElementById('en').style.display = lang === 'en' ? 'block' : 'none';
+    document.getElementById('fr').style.display = lang === 'fr' ? 'block' : 'none';
+    document.documentElement.lang = lang;
+}
+</script>
+</head>
+<body>
+
+<div class="lang-switch" role="navigation" aria-label="Language">
+Language<br>
+<button id="btn-en" onclick="switchLang('en')">English</button><br>
+<button id="btn-fr" onclick="switchLang('fr')">Fran&ccedil;ais</button><br>
+</div>
+
+<!-- ============================ ENGLISH ============================ -->
+<div id="en">
+
+<h1>TunerAccess &mdash; Changelog</h1>
+
+<h2>Version 1.00 &mdash; 2 June 2026 (first public release)</h2>
+
+<h3>Instruments and tunings</h3>
+<ul>
+<li>6-string guitar: Standard E, Drop D, Open G, Open D, DADGAD, Open E, Half Step Down, Full Step Down, and Free Chromatic.</li>
+<li>7-string guitar: Standard B, Drop A, Standard B Half Step Down, Drop G sharp.</li>
+<li>4-string bass: Standard E, Drop D, Half Step Down.</li>
+<li>5-string bass: Standard B, Half Step Down.</li>
+<li>6-string bass: Standard B to C.</li>
+<li>Free Chromatic mode is available on every instrument.</li>
+</ul>
+
+<h3>Pitch detection</h3>
+<ul>
+<li>YIN algorithm with sub-sample parabolic interpolation.</li>
+<li>Detection range extended down to about 25 Hz so 5- and 6-string basses (low B at 31 Hz) are covered.</li>
+</ul>
+
+<h3>Tuning feedback (screen reader)</h3>
+<ul>
+<li>Pluck-to-hear model: the tuner stays silent while a note rings. After a short silence it re-arms, and the next pluck is announced exactly once, after a brief stabilization so the reading is accurate.</li>
+<li>Announcements report the target note, the deviation in whole cents, and the direction to turn (tune up / tune down). &ldquo;Tuned&rdquo; is announced within about &plusmn;2.5 cents.</li>
+</ul>
+
+<h3>In-tune lock tone</h3>
+<ul>
+<li>A continuous 880 Hz tone sounds while the string is in tune, toggled with <kbd>T</kbd>. This is the audio equivalent of a strobe tuner&rsquo;s lock or a pedal tuner&rsquo;s green light.</li>
+<li>The tone window matches the screen-reader &ldquo;tuned&rdquo; range (about &plusmn;2.5 cents), with hysteresis so it does not flicker at the edge.</li>
+<li>The toggle state is saved between sessions.</li>
+</ul>
+
+<h3>Inputs</h3>
+<ul>
+<li>Two named input slots, each with its own device channel and input gain (&minus;12 to +24 dB). Rename with <kbd>F2</kbd>. The inactive input is muted, so switching slots changes the source cleanly.</li>
+<li>The selected input is passed through to the output (mono to stereo) so you can monitor what is being analysed.</li>
+<li>All input settings are saved automatically.</li>
+</ul>
+
+<h3>Audio settings</h3>
+<ul>
+<li>A fully accessible audio settings panel (open with <kbd>F10</kbd>): audio driver (including ASIO on Windows), device, output pair, sample rate, buffer size. The inaccessible stock dialog is never shown.</li>
+</ul>
+
+<h3>Documentation and help</h3>
+<ul>
+<li>Press <kbd>F1</kbd> from anywhere in the tuner to open the user manual in your browser. Press <kbd>H</kbd> for a quick spoken summary of the keys.</li>
+<li>The user manual and changelog are installed with the application.</li>
+</ul>
+
+<h3>Platforms and packaging</h3>
+<ul>
+<li>Windows: VST3 and Standalone, with an NVDA-first design and a bilingual (English / French) installer.</li>
+<li>macOS support in progress (VST3, Audio Unit, Standalone) with VoiceOver.</li>
+<li>Fully self-contained: no dependency on other applications at run time.</li>
+</ul>
+
+</div>
+
+<!-- ============================ FRAN&Ccedil;AIS ============================ -->
+<div id="fr" style="display:none">
+
+<h1>TunerAccess &mdash; Journal des modifications</h1>
+
+<h2>Version 1.00 &mdash; 2 juin 2026 (premi&egrave;re version publique)</h2>
+
+<h3>Instruments et accordages</h3>
+<ul>
+<li>Guitare 6 cordes&nbsp;: Standard E, Drop D, Open G, Open D, DADGAD, Open E, Half Step Down, Full Step Down, et Chromatique libre.</li>
+<li>Guitare 7 cordes&nbsp;: Standard B, Drop A, Standard B Half Step Down, Drop Sol di&egrave;se.</li>
+<li>Basse 4 cordes&nbsp;: Standard E, Drop D, Half Step Down.</li>
+<li>Basse 5 cordes&nbsp;: Standard B, Half Step Down.</li>
+<li>Basse 6 cordes&nbsp;: Standard B vers C.</li>
+<li>Le mode Chromatique libre est disponible sur chaque instrument.</li>
+</ul>
+
+<h3>D&eacute;tection de hauteur</h3>
+<ul>
+<li>Algorithme YIN avec interpolation parabolique sous-&eacute;chantillon.</li>
+<li>Plage de d&eacute;tection &eacute;tendue jusqu&rsquo;&agrave; environ 25 Hz pour couvrir les basses 5 et 6 cordes (si grave &agrave; 31 Hz).</li>
+</ul>
+
+<h3>Retour d&rsquo;accordage (lecteur d&rsquo;&eacute;cran)</h3>
+<ul>
+<li>Mod&egrave;le &laquo;&nbsp;jouer pour entendre&nbsp;&raquo;&nbsp;: l&rsquo;accordeur reste silencieux pendant que la corde r&eacute;sonne. Apr&egrave;s un court silence il se r&eacute;arme, et le coup de corde suivant est annonc&eacute; une seule fois, apr&egrave;s une br&egrave;ve stabilisation pour une lecture juste.</li>
+<li>Les annonces donnent la note cible, l&rsquo;&eacute;cart en cents entiers, et le sens &agrave; tourner (monter / descendre). &laquo;&nbsp;Tuned&nbsp;&raquo; est annonc&eacute; &agrave; environ &plusmn;2,5 cents.</li>
+</ul>
+
+<h3>Tonalit&eacute; de verrouillage (lock tone)</h3>
+<ul>
+<li>Une tonalit&eacute; continue de 880 Hz sonne tant que la corde est accord&eacute;e, activ&eacute;e avec <kbd>T</kbd>. C&rsquo;est l&rsquo;&eacute;quivalent audio du verrouillage d&rsquo;un accordeur &agrave; stroboscope ou de la LED verte d&rsquo;une p&eacute;dale.</li>
+<li>La plage de la tonalit&eacute; correspond &agrave; celle du &laquo;&nbsp;tuned&nbsp;&raquo; du lecteur d&rsquo;&eacute;cran (environ &plusmn;2,5 cents), avec hyst&eacute;r&eacute;sis pour ne pas clignoter &agrave; la limite.</li>
+<li>L&rsquo;&eacute;tat du bouton est sauvegard&eacute; entre les sessions.</li>
+</ul>
+
+<h3>Entr&eacute;es</h3>
+<ul>
+<li>Deux entr&eacute;es nomm&eacute;es, chacune avec son canal de p&eacute;riph&eacute;rique et son gain d&rsquo;entr&eacute;e (&minus;12 &agrave; +24 dB). Renommez avec <kbd>F2</kbd>. L&rsquo;entr&eacute;e inactive est coup&eacute;e, donc changer d&rsquo;entr&eacute;e change proprement la source.</li>
+<li>L&rsquo;entr&eacute;e s&eacute;lectionn&eacute;e est renvoy&eacute;e vers la sortie (mono vers st&eacute;r&eacute;o) pour pouvoir &eacute;couter ce qui est analys&eacute;.</li>
+<li>Tous les r&eacute;glages d&rsquo;entr&eacute;e sont sauvegard&eacute;s automatiquement.</li>
+</ul>
+
+<h3>R&eacute;glages audio</h3>
+<ul>
+<li>Un panneau de r&eacute;glages audio enti&egrave;rement accessible (ouvrir avec <kbd>F10</kbd>)&nbsp;: pilote audio (dont ASIO sous Windows), p&eacute;riph&eacute;rique, paire de sortie, taux d&rsquo;&eacute;chantillonnage, taille de m&eacute;moire tampon. La fen&ecirc;tre standard inaccessible n&rsquo;est jamais affich&eacute;e.</li>
+</ul>
+
+<h3>Documentation et aide</h3>
+<ul>
+<li>Appuyez sur <kbd>F1</kbd> depuis n&rsquo;importe o&ugrave; dans l&rsquo;accordeur pour ouvrir le manuel dans votre navigateur. Appuyez sur <kbd>H</kbd> pour un r&eacute;sum&eacute; vocal rapide des touches.</li>
+<li>Le manuel et le journal des modifications sont install&eacute;s avec l&rsquo;application.</li>
+</ul>
+
+<h3>Plateformes et distribution</h3>
+<ul>
+<li>Windows&nbsp;: VST3 et autonome, con&ccedil;u pour NVDA en priorit&eacute;, avec un installeur bilingue (anglais / fran&ccedil;ais).</li>
+<li>Support macOS en cours (VST3, Audio Unit, autonome) avec VoiceOver.</li>
+<li>Enti&egrave;rement autonome&nbsp;: aucune d&eacute;pendance &agrave; d&rsquo;autres applications &agrave; l&rsquo;ex&eacute;cution.</li>
+</ul>
+
+</div>
+
+<footer>
+TunerAccess &mdash; ReaperAccessible
+</footer>
+
+</body>
+</html>

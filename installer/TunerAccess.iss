@@ -1,13 +1,13 @@
 [Setup]
 AppName=TunerAccess
-AppVersion=0.90
+AppVersion=1.00
 AppPublisher=ReaperAccessible
 AppPublisherURL=https://reaccessible.net
 LicenseFile=data\EULA.txt
 DefaultDirName={autopf}\TunerAccess
 DefaultGroupName=TunerAccess
 OutputDir=output
-OutputBaseFilename=ReaperAccessible_TunerAccess_0.90_Setup
+OutputBaseFilename=ReaperAccessible_TunerAccess_1.00_Setup
 Compression=lzma2/ultra64
 SolidCompression=yes
 DiskSpanning=no
@@ -67,8 +67,14 @@ Source: "..\build\TunerAccess_artefacts\Release\VST3\TunerAccess.vst3\*"; DestDi
 ; NVDA Controller Client DLL — always installed (required for screen reader accessibility)
 Source: "..\nvda_2025.3.3_controllerClient\x64\nvdaControllerClient.dll"; DestDir: "{userappdata}\TunerAccess"; Flags: ignoreversion
 
+; User manual + changelog — installed to AppData (found by F1) and to the app folder.
+Source: "..\Docs\TunerAccess_Manual.html"; DestDir: "{userappdata}\TunerAccess"; Flags: ignoreversion
+Source: "..\Docs\TunerAccess_Manual.html"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\Docs\CHANGELOG.html";           DestDir: "{app}"; Flags: ignoreversion
+
 [Icons]
 Name: "{group}\TunerAccess"; Filename: "{app}\TunerAccess.exe"; Components: standalone
+Name: "{group}\TunerAccess User Manual"; Filename: "{app}\TunerAccess_Manual.html"
 Name: "{group}\Uninstall TunerAccess"; Filename: "{uninstallexe}"
 Name: "{userdesktop}\TunerAccess"; Filename: "{app}\TunerAccess.exe"; Components: standalone; Tasks: desktopicon
 
@@ -76,8 +82,9 @@ Name: "{userdesktop}\TunerAccess"; Filename: "{app}\TunerAccess.exe"; Components
 Name: "desktopicon"; Description: "{cm:TaskDesktop}"; GroupDescription: "{cm:TaskDesktopGroup}"; Components: standalone
 
 [UninstallDelete]
-; Remove the NVDA DLL and the AppData folder itself when empty
+; Remove the NVDA DLL, the manual, and the AppData folder itself when empty
 Type: files; Name: "{userappdata}\TunerAccess\nvdaControllerClient.dll"
+Type: files; Name: "{userappdata}\TunerAccess\TunerAccess_Manual.html"
 Type: dirifempty; Name: "{userappdata}\TunerAccess"
 
 [Code]

@@ -178,7 +178,18 @@ void screenReaderAnnounceInterrupt(const juce::String& message)
    #if JUCE_WINDOWS
     auto& nvda = getNvda();
     if (nvda.isNvdaRunning())
+    {
+        // Real-time streaming announcement (15 Hz tuner timer).
+        // speakSsml(NOW) alone only PREEMPTS the current utterance — it does NOT
+        // clear pending NOW-priority items, so a 15 Hz timer stacks announcements
+        // and the user hears stale pitch values. cancelSpeech() destroys the
+        // entire queue across all priorities, guaranteeing that the next
+        // speakSsml(NOW) delivers ONLY the latest value.
+        // DO NOT remove this call — it is the pre-regression behavior and matches
+        // GuitarAccess. See memory/nvda_speech_priority_speakssml.md.
+        nvda.cancelSpeech();
         nvdaSpeakWithPriority(nvda, message, kSpeechNow);
+    }
     else
         uiaRaiseNotification(message);
    #else
@@ -226,11 +237,20 @@ void announceValue()
 //==============================================================================
 juce::String TunerAccessAudioProcessorEditor::TunerComponent::getCurrentText() const
 {
+    auto& instruments = getInstruments();
+    int ii = juce::jlimit(0, static_cast<int>(instruments.size()) - 1, instrumentIndex);
+    const auto& inst = instruments[static_cast<size_t>(ii)];
+
     if (navField == 0)
+    {
+        return juce::String("Instrument, ") + inst.name;
+    }
+    if (navField == 1)
     {
         if (tuningPresetIndex == kFreeChromatic)
             return "Tuning, Free Chromatic";
-        return juce::String("Tuning, ") + getTuningPresets()[static_cast<size_t>(tuningPresetIndex)].name;
+        int ti = juce::jlimit(0, static_cast<int>(inst.tunings.size()) - 1, tuningPresetIndex);
+        return juce::String("Tuning, ") + inst.tunings[static_cast<size_t>(ti)].name;
     }
     return getStringText();
 }
@@ -240,9 +260,17 @@ juce::String TunerAccessAudioProcessorEditor::TunerComponent::getStringText() co
     if (tuningPresetIndex == kFreeChromatic)
         return "No string target in chromatic mode";
 
-    auto& preset = getTuningPresets()[static_cast<size_t>(tuningPresetIndex)];
-    int midi = preset.midiNotes[static_cast<size_t>(currentString)];
-    return "String " + juce::String(6 - currentString) + ", target " + midiNoteToString(midi);
+    auto& instruments = getInstruments();
+    int ii = juce::jlimit(0, static_cast<int>(instruments.size()) - 1, instrumentIndex);
+    auto& tunings = instruments[static_cast<size_t>(ii)].tunings;
+    int ti = juce::jlimit(0, static_cast<int>(tunings.size()) - 1, tuningPresetIndex);
+    auto& preset = tunings[static_cast<size_t>(ti)];
+
+    int numStrings = static_cast<int>(preset.midiNotes.size());
+    int cs = juce::jlimit(0, numStrings - 1, currentString);
+    int midi = preset.midiNotes[static_cast<size_t>(cs)];
+    // String numbering: index 0 = lowest physical string = highest number (e.g. 7 on a 7-string).
+    return "String " + juce::String(numStrings - cs) + ", target " + midiNoteToString(midi);
 }
 
 void TunerAccessAudioProcessorEditor::TunerComponent::focusGained(FocusChangeType)
@@ -266,53 +294,99 @@ void TunerAccessAudioProcessorEditor::TunerComponent::timerCallback()
 
     if (freq < 0.0f)
     {
-        if (lastAnnouncedFreq >= 0.0f)
-        {
-            lastAnnouncedFreq = -1.0f;
-            smoothedCents = 0.0f;
-        }
+        // >=50 ms of silence (engine threshold). Re-arm for the next pluck.
+        if (!noteArmed || inAttack)
+            resetForNextNote();
         return;
     }
 
-    buildAnnouncement(freq);
+    // A note is sounding.
+    if (!noteArmed)
+        return;   // already announced this pluck, or note still ringing → stay silent
+
+    // Armed + a note just (re)started: stabilize ~120 ms, then announce once.
+    if (!inAttack)
+    {
+        inAttack      = true;
+        attackPrimed  = false;
+        attackStartMs = juce::Time::getMillisecondCounterHiRes();
+    }
+
+    bool ready = (juce::Time::getMillisecondCounterHiRes() - attackStartMs) >= 120.0;
+    buildAnnouncement(freq, ready);
+
+    if (ready)
+    {
+        noteArmed = false;   // silent until the next >=50 ms silence + pluck
+        inAttack  = false;
+    }
 }
 
-void TunerAccessAudioProcessorEditor::TunerComponent::buildAnnouncement(float freq)
+// freq is the current detected pitch. doSpeak: while false we only accumulate the
+// smoothed reading during the post-attack window; when true we announce ONCE.
+void TunerAccessAudioProcessorEditor::TunerComponent::buildAnnouncement(float freq, bool doSpeak)
 {
     auto note = frequencyToNote(freq);
     if (!note.valid)
         return;
 
-    bool isGuided = (tuningPresetIndex != kFreeChromatic);
+    const bool isGuided = (tuningPresetIndex != kFreeChromatic);
+
+    // ----- Compute raw cents deviation for the active mode -----
+    float rawCents = 0.0f;
+    juce::String targetName;
+    juce::String detectedName = juce::String(note.noteName) + juce::String(note.octave);
+    int  semitoneDiff = 0;
+    bool farFromTarget = false;
 
     if (isGuided)
     {
-        // Guided mode: compare to target string
-        auto& preset = getTuningPresets()[static_cast<size_t>(tuningPresetIndex)];
-        int targetMidi = preset.midiNotes[static_cast<size_t>(currentString)];
-        float cents = centsFromTarget(freq, targetMidi);
+        auto& instruments = getInstruments();
+        int ii = juce::jlimit(0, static_cast<int>(instruments.size()) - 1, instrumentIndex);
+        auto& tunings = instruments[static_cast<size_t>(ii)].tunings;
+        int ti = juce::jlimit(0, static_cast<int>(tunings.size()) - 1, tuningPresetIndex);
+        auto& preset = tunings[static_cast<size_t>(ti)];
+        int numStrings = static_cast<int>(preset.midiNotes.size());
+        int cs = juce::jlimit(0, numStrings - 1, currentString);
+        int targetMidi = preset.midiNotes[static_cast<size_t>(cs)];
 
-        // Smooth
-        smoothedCents = 0.6f * smoothedCents + 0.4f * cents;
-        int centsRounded = static_cast<int>(std::round(smoothedCents));
+        rawCents      = centsFromTarget(freq, targetMidi);
+        targetName    = midiNoteToString(targetMidi);
+        semitoneDiff  = note.midiNote - targetMidi;
+        farFromTarget = (std::abs(semitoneDiff) > 1);
+    }
+    else
+    {
+        rawCents = note.centsDeviation;
+    }
 
-        // Only announce on significant change or first detection
-        bool firstDetection = (lastAnnouncedFreq < 0.0f);
-        bool significantChange = std::abs(freq - lastAnnouncedFreq) > 3.0f;
-        if (!firstDetection && !significantChange)
-            return;
-        lastAnnouncedFreq = freq;
+    // ----- Accumulate the smoothed reading across the ~120 ms attack window -----
+    // Prime on the first frame so the value converges without smoothing lag.
+    if (!attackPrimed)
+    {
+        smoothedCents = rawCents;
+        attackPrimed = true;
+    }
+    else
+    {
+        smoothedCents = 0.6f * smoothedCents + 0.4f * rawCents;
+    }
 
-        juce::String targetName = midiNoteToString(targetMidi);
-        juce::String detectedName = juce::String(note.noteName) + juce::String(note.octave);
+    if (!doSpeak)
+        return;   // still stabilizing — accumulate only, don't speak yet
 
-        // How far from target in semitones?
-        int semitoneDiff = note.midiNote - targetMidi;
+    // ----- Build the single announcement for this pluck -----
+    // NVDA speech matches the original version: integer cents, "tuned" within an
+    // effective ±2.5 cents (round to int, |cents| <= 2), three tiers. The precise
+    // ±0.5 cent fine-tuning is handled separately by the in-tune lock tone.
+    int centsRounded = static_cast<int>(std::round(smoothedCents));
+    juce::String centsStr = juce::String(std::abs(centsRounded));
 
-        juce::String msg;
-        if (std::abs(semitoneDiff) > 1)
+    juce::String msg;
+    if (isGuided)
+    {
+        if (farFromTarget)
         {
-            // Far from target — announce target, detected, direction
             msg = "Target " + targetName + ". Hearing " + detectedName;
             msg += (semitoneDiff > 0) ? ", tune down" : ", tune up";
         }
@@ -322,48 +396,32 @@ void TunerAccessAudioProcessorEditor::TunerComponent::buildAnnouncement(float fr
         }
         else if (std::abs(centsRounded) <= 5)
         {
-            // Very close — just cents, no direction
+            // Very close — cents only, no direction
             msg = targetName;
-            if (centsRounded > 0)
-                msg += ", sharp " + juce::String(centsRounded) + " cents";
-            else
-                msg += ", flat " + juce::String(-centsRounded) + " cents";
+            msg += (centsRounded > 0) ? ", sharp " + centsStr + " cents"
+                                      : ", flat "  + centsStr + " cents";
         }
         else
         {
             // Close — cents + direction
             msg = targetName;
-            if (centsRounded > 0)
-                msg += ", sharp " + juce::String(centsRounded) + " cents, tune down";
-            else
-                msg += ", flat " + juce::String(-centsRounded) + " cents, tune up";
+            msg += (centsRounded > 0) ? ", sharp " + centsStr + " cents, tune down"
+                                      : ", flat "  + centsStr + " cents, tune up";
         }
-
-        screenReaderAnnounceInterrupt(msg);
     }
     else
     {
-        // Free chromatic mode
-        smoothedCents = 0.6f * smoothedCents + 0.4f * note.centsDeviation;
-
-        bool firstDetection = (lastAnnouncedFreq < 0.0f);
-        bool significantChange = std::abs(freq - lastAnnouncedFreq) > 3.0f;
-        if (!firstDetection && !significantChange)
-            return;
-        lastAnnouncedFreq = freq;
-
-        int centsRounded = static_cast<int>(std::round(smoothedCents));
-        juce::String msg = juce::String(note.noteName) + juce::String(note.octave);
-
+        msg = detectedName;
         if (std::abs(centsRounded) <= 2)
             msg += ", tuned";
         else if (centsRounded > 0)
-            msg += ", sharp " + juce::String(centsRounded) + " cents";
+            msg += ", sharp " + centsStr + " cents";
         else
-            msg += ", flat " + juce::String(-centsRounded) + " cents";
-
-        screenReaderAnnounceInterrupt(msg);
+            msg += ", flat " + centsStr + " cents";
     }
+
+    // One announcement per pluck — cancel + speakSsml(NOW) so a fast re-pluck wins.
+    screenReaderAnnounceInterrupt(msg);
 }
 
 //==============================================================================
@@ -527,6 +585,13 @@ bool TunerAccessAudioProcessorEditor::InputComponent::keyPressed(const juce::Key
         return true;
     }
 
+    // F1: open the user manual.
+    if (noMods && kc == juce::KeyPress::F1Key)
+    {
+        editor.openManual();
+        return true;
+    }
+
     return false;
 }
 
@@ -602,12 +667,15 @@ void TunerAccessAudioProcessorEditor::TunerComponent::announceHelp()
 {
     // Same content as GuitarAccess contextHelpData["tuner"]
     juce::String help =
-        "Guitar Tuner with tuning presets. "
-        "Left or Right: Switch field between Tuning and String. "
-        "Up or Down: Change tuning preset or string. "
-        "Enter: Start or stop tuner. "
-        "Control plus Up or Down: Quick string change. "
-        "Home or End: First or last item. "
+        "Guitar Tuner. "
+        "Left or Right: switch field between Instrument, Tuning, and String. "
+        "Up or Down: change the value of the current field. "
+        "Enter: start or stop tuner. "
+        "Control plus Up or Down: quick string change. "
+        "Home or End: first or last item in the current field. "
+        "T: toggle the lock tone, a steady tone that sounds while you are in tune. "
+        "F1: open the user manual. "
+        "Supports 6 and 7 string guitars and 4, 5, 6 string basses with multiple tunings each. "
         "Tab moves to the Input panel where you can switch between 2 named inputs, "
         "adjust gain with Alt Up Down, change device channel with Left Right then Alt Up Down, "
         "and rename with F2. "
@@ -623,17 +691,34 @@ bool TunerAccessAudioProcessorEditor::TunerComponent::keyPressed(const juce::Key
     bool ctrl = key.getModifiers().isCtrlDown();
     bool noMods = !key.getModifiers().isAnyModifierKeyDown();
 
-    auto& presets = getTuningPresets();
-    int numPresets = static_cast<int>(presets.size());
+    auto& instruments = getInstruments();
+    int numInstruments = static_cast<int>(instruments.size());
+    instrumentIndex = juce::jlimit(0, numInstruments - 1, instrumentIndex);
+    auto& tunings = instruments[static_cast<size_t>(instrumentIndex)].tunings;
+    int numPresets = static_cast<int>(tunings.size());
 
-    // Left/Right: navigate between 2 fields (Tuning <-> String).
-    // In chromatic mode, only Tuning is shown.
+    // Helper: which string-count does the current (instrument, tuning) yield?
+    auto currentNumStrings = [&]() -> int
+    {
+        if (tuningPresetIndex == kFreeChromatic) return 0;
+        int ti = juce::jlimit(0, numPresets - 1, tuningPresetIndex);
+        return static_cast<int>(tunings[static_cast<size_t>(ti)].midiNotes.size());
+    };
+
+    // Left/Right: cycle between 3 fields (Instrument <-> Tuning <-> String).
+    // In chromatic mode, the String field is skipped.
     if (noMods && (kc == juce::KeyPress::leftKey || kc == juce::KeyPress::rightKey))
     {
+        int dir = (kc == juce::KeyPress::rightKey) ? 1 : -1;
         if (tuningPresetIndex == kFreeChromatic)
-            navField = 0;
-        else
+        {
+            // Cycle 0 (Instrument) <-> 1 (Tuning) only.
             navField = (navField == 0) ? 1 : 0;
+        }
+        else
+        {
+            navField = (navField + dir + 3) % 3;
+        }
         setName(getCurrentText());
         setTitle(getCurrentText());
         announceValue();
@@ -647,7 +732,15 @@ bool TunerAccessAudioProcessorEditor::TunerComponent::keyPressed(const juce::Key
 
         if (navField == 0)
         {
-            // Browse tuning presets: Free Chromatic (-1), then 0..numPresets-1
+            // Switch instrument. Reset tuning to first preset of the new
+            // instrument and currentString to 0 (lowest string).
+            instrumentIndex = juce::jlimit(0, numInstruments - 1, instrumentIndex + dir);
+            tuningPresetIndex = 0;
+            currentString = 0;
+        }
+        else if (navField == 1)
+        {
+            // Browse tunings within the active instrument: Free Chromatic (-1) then 0..numPresets-1
             if (dir > 0)
             {
                 if (tuningPresetIndex == kFreeChromatic)
@@ -664,65 +757,92 @@ bool TunerAccessAudioProcessorEditor::TunerComponent::keyPressed(const juce::Key
             }
             currentString = 0;
         }
-        else if (navField == 1 && tuningPresetIndex != kFreeChromatic)
+        else if (navField == 2 && tuningPresetIndex != kFreeChromatic)
         {
-            currentString = juce::jlimit(0, 5, currentString + dir);
+            int n = currentNumStrings();
+            if (n > 0)
+                currentString = juce::jlimit(0, n - 1, currentString + dir);
         }
 
+        pushStateToProcessor();
         setName(getCurrentText());
         setTitle(getCurrentText());
         announceValue();
         return true;
     }
 
-    // Home/End in tuning preset field
+    // Home/End in Instrument field (navField == 0): first / last instrument
     if (noMods && navField == 0 && kc == juce::KeyPress::homeKey)
     {
-        tuningPresetIndex = kFreeChromatic;
+        instrumentIndex = 0;
+        tuningPresetIndex = 0;
         currentString = 0;
-        setName(getCurrentText());
-        setTitle(getCurrentText());
+        pushStateToProcessor();
+        setName(getCurrentText()); setTitle(getCurrentText());
         announceValue();
         return true;
     }
     if (noMods && navField == 0 && kc == juce::KeyPress::endKey)
     {
-        tuningPresetIndex = numPresets - 1;
+        instrumentIndex = numInstruments - 1;
+        tuningPresetIndex = 0;
         currentString = 0;
-        setName(getCurrentText());
-        setTitle(getCurrentText());
+        pushStateToProcessor();
+        setName(getCurrentText()); setTitle(getCurrentText());
         announceValue();
         return true;
     }
 
-    // Home/End in string field
+    // Home/End in Tuning field (navField == 1)
     if (noMods && navField == 1 && kc == juce::KeyPress::homeKey)
     {
+        tuningPresetIndex = kFreeChromatic;
         currentString = 0;
-        setName(getCurrentText());
-        setTitle(getCurrentText());
+        pushStateToProcessor();
+        setName(getCurrentText()); setTitle(getCurrentText());
         announceValue();
         return true;
     }
     if (noMods && navField == 1 && kc == juce::KeyPress::endKey)
     {
-        currentString = 5;
-        setName(getCurrentText());
-        setTitle(getCurrentText());
+        tuningPresetIndex = numPresets - 1;
+        currentString = 0;
+        pushStateToProcessor();
+        setName(getCurrentText()); setTitle(getCurrentText());
+        announceValue();
+        return true;
+    }
+
+    // Home/End in String field (navField == 2)
+    if (noMods && navField == 2 && kc == juce::KeyPress::homeKey)
+    {
+        currentString = 0; // lowest physical string
+        pushStateToProcessor();
+        setName(getCurrentText()); setTitle(getCurrentText());
+        announceValue();
+        return true;
+    }
+    if (noMods && navField == 2 && kc == juce::KeyPress::endKey)
+    {
+        int n = currentNumStrings();
+        if (n > 0) currentString = n - 1; // highest physical string
+        pushStateToProcessor();
+        setName(getCurrentText()); setTitle(getCurrentText());
         announceValue();
         return true;
     }
 
     // Ctrl+Up/Down: change string quickly (any field).
-    // Update UIA Name so braille reflects the new string immediately.
     if (ctrl && !alt && !shift && (kc == juce::KeyPress::upKey || kc == juce::KeyPress::downKey))
     {
         if (tuningPresetIndex != kFreeChromatic)
         {
             int dir = (kc == juce::KeyPress::upKey) ? -1 : 1;
-            currentString = juce::jlimit(0, 5, currentString + dir);
-            lastAnnouncedFreq = -1.0f;
-            smoothedCents = 0.0f;
+            int n = currentNumStrings();
+            if (n > 0)
+                currentString = juce::jlimit(0, n - 1, currentString + dir);
+            resetForNextNote();
+            pushStateToProcessor();
             setName(getCurrentText());
             setTitle(getCurrentText());
             screenReaderAnnounce(getStringText());
@@ -743,8 +863,8 @@ bool TunerAccessAudioProcessorEditor::TunerComponent::keyPressed(const juce::Key
 
         if (tunerActive)
         {
-            lastAnnouncedFreq = -1.0f;
-            smoothedCents = 0.0f;
+            resetForNextNote();
+            pushStateToProcessor();   // publish lock-tone target before the tone can sound
             startTimerHz(15);
 
             if (tuningPresetIndex == kFreeChromatic)
@@ -757,6 +877,25 @@ bool TunerAccessAudioProcessorEditor::TunerComponent::keyPressed(const juce::Key
             stopTimer();
             screenReaderAnnounceNow("Tuner stopped.");
         }
+        return true;
+    }
+
+    // F1: open the user manual in the browser.
+    if (noMods && kc == juce::KeyPress::F1Key)
+    {
+        editor.openManual();
+        return true;
+    }
+
+    // T: toggle the in-tune lock tone (continuous 880 Hz while within ~0.5 cent).
+    if (noMods && kc == 'T')
+    {
+        auto& p = editor.processorRef;
+        bool on = !p.lockToneEnabled.load(std::memory_order_relaxed);
+        p.lockToneEnabled.store(on, std::memory_order_relaxed);
+        pushStateToProcessor();   // make sure the target is current for the tone
+        screenReaderAnnounceNow(on ? "Lock tone on. A steady tone sounds when you are in tune."
+                                   : "Lock tone off.");
         return true;
     }
 
@@ -827,6 +966,37 @@ void TunerAccessAudioProcessorEditor::openAudioSettings()
 
     // NEXT priority queues after the native focus announcement instead of racing it.
     screenReaderAnnounceNext("Audio settings opened.");
+}
+
+void TunerAccessAudioProcessorEditor::openManual()
+{
+    // Search known locations (works for standalone and plugin). The installer
+    // copies the manual into %APPDATA%\TunerAccess; during development it lives
+    // in the project Docs folder.
+    juce::Array<juce::File> candidates;
+
+    auto appData = juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
+                       .getChildFile("TunerAccess");
+    candidates.add(appData.getChildFile("TunerAccess_Manual.html"));
+
+    auto exeDir = juce::File::getSpecialLocation(juce::File::currentExecutableFile).getParentDirectory();
+    candidates.add(exeDir.getChildFile("TunerAccess_Manual.html"));
+    candidates.add(exeDir.getChildFile("Docs").getChildFile("TunerAccess_Manual.html"));
+
+    // Development fallback.
+    candidates.add(juce::File("C:\\Claude\\TunerAccess\\Docs\\TunerAccess_Manual.html"));
+
+    for (auto& f : candidates)
+    {
+        if (f.existsAsFile())
+        {
+            f.startAsProcess();   // opens in the default browser
+            screenReaderAnnounceNow("Opening the user manual in your browser.");
+            return;
+        }
+    }
+
+    screenReaderAnnounceNow("User manual not found.");
 }
 
 //==============================================================================
@@ -1031,7 +1201,7 @@ void TunerAccessAudioProcessorEditor::paint(juce::Graphics& g)
     g.drawFittedText("TunerAccess", getLocalBounds().removeFromTop(40), juce::Justification::centred, 1);
 
     g.setFont(juce::FontOptions(14.0f));
-    g.drawFittedText("Tab: move between Tuner and Input  -  H: help  -  F10: audio settings",
+    g.drawFittedText("Tab: Tuner / Input  -  H: help  -  F1: manual  -  F10: audio settings",
                      getLocalBounds().removeFromBottom(30),
                      juce::Justification::centred, 1);
 }
