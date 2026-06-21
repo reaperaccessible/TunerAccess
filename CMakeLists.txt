@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(TunerAccess VERSION 1.0.0 LANGUAGES C CXX)
+project(TunerAccess VERSION 1.0.3 LANGUAGES C CXX)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_CXX_STANDARD 20)
@@ -35,6 +35,8 @@ endif()
 # --- Plugin target ---
 juce_add_plugin(TunerAccess
     COMPANY_NAME               "ReaperAccessible"
+    COMPANY_WEBSITE            "https://reaperaccessible.com"
+    BUNDLE_ID                  "com.reaperaccessible.tuneraccess"
     PLUGIN_MANUFACTURER_CODE   RpAc
     PLUGIN_CODE                TuAc
     FORMATS                    ${TUNERACCESS_FORMATS}
