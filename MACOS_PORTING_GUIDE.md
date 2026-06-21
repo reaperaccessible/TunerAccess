@@ -195,7 +195,7 @@ Wired via `CMakeLists.txt:51-54`. On first launch the system prompts; the user m
 ### 7.2 Function-key (Fn) behavior
 On Mac laptops, F1–F12 default to media/brightness keys. F1 (manual), F2 (rename), F10 (audio settings) may require **holding Fn** (e.g. Fn+F1). The **T** key and arrow navigation are unaffected.
 - Document in the manual/help: "On macOS, hold Fn to use F1/F2/F10, or enable System Settings → Keyboard → 'Use F1, F2, etc. as standard function keys'."
-- F10 always has a button alternative: the title-bar **"Audio Settings"** button (renamed from JUCE's stock "Options" in `CustomStandaloneApp.cpp`). Verify that button is found and reachable under VoiceOver on Cocoa — if the `dynamic_cast<TextButton*>` loop fails to find it on Cocoa's window hierarchy, fall back to F10/Fn+F10.
+- F10 has a Tab-reachable alternative: since 1.01 there is an **in-editor "Audio Settings" button** added in `PluginEditor` (standalone only, `setExplicitFocusOrder(3)`, after Tuner=1 and Input=2). It is a plain `juce::TextButton` (role button, natively accessible) — VoiceOver should announce "Audio Settings, button" and Space/Enter opens the panel. This is cross-platform shared code; just verify it appears in the Tab order on Cocoa. The older title-bar "Audio Settings" button (from `CustomStandaloneApp.cpp`, renamed from JUCE's stock "Options") is mouse-only chrome and not in the focus container — do NOT rely on it for keyboard/VoiceOver.
 
 ### 7.3 Code signing & notarization
 Unsigned local builds run but trigger Gatekeeper on first launch.

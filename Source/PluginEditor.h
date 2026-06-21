@@ -201,6 +201,12 @@ public:
 
     InputComponent inputComp{*this};
 
+    // Tab-reachable button to open the audio settings (standalone only). The
+    // JUCE title-bar "Audio Settings" button is window chrome and not part of
+    // the editor's focus container, so a real in-editor button is needed for
+    // keyboard / screen-reader users.
+    juce::TextButton audioSettingsButton { "Audio Settings" };
+
 private:
     void componentBroughtToFront(juce::Component&) override;
 

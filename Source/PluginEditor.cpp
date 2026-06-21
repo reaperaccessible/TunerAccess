@@ -1026,6 +1026,19 @@ TunerAccessAudioProcessorEditor::TunerAccessAudioProcessorEditor(TunerAccessAudi
     inputComp.setExplicitFocusOrder(2);
     addAndMakeVisible(inputComp);
 
+    // In-editor, Tab-reachable Audio Settings button (standalone only). Same
+    // action as F10. juce::TextButton is natively accessible (role button).
+    if (isStandalone())
+    {
+        audioSettingsButton.setName("Audio Settings");
+        audioSettingsButton.setTitle("Audio Settings");
+        audioSettingsButton.setDescription("Open the audio settings to choose your sound card, output and buffer size. Same as F10.");
+        audioSettingsButton.setWantsKeyboardFocus(true);
+        audioSettingsButton.setExplicitFocusOrder(3);
+        audioSettingsButton.onClick = [this] { openAudioSettings(); };
+        addAndMakeVisible(audioSettingsButton);
+    }
+
     setWantsKeyboardFocus(true);
 
     // Stage A (300ms): once the standalone window has fully wrapped the editor,
@@ -1209,6 +1222,15 @@ void TunerAccessAudioProcessorEditor::paint(juce::Graphics& g)
 void TunerAccessAudioProcessorEditor::resized()
 {
     auto area = getLocalBounds().reduced(20, 50);
+
+    // Reserve a strip at the bottom for the Audio Settings button (standalone).
+    if (audioSettingsButton.isVisible())
+    {
+        auto btnRow = area.removeFromBottom(32);
+        area.removeFromBottom(8);
+        audioSettingsButton.setBounds(btnRow.removeFromLeft(180));
+    }
+
     int h = area.getHeight();
     tunerComp.setBounds(area.removeFromTop(h / 2 - 4));
     area.removeFromTop(8);
