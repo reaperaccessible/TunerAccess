@@ -6,7 +6,7 @@
 VST3 · Audio Unit · Standalone — built with JUCE 8.
 NVDA on Windows · VoiceOver on macOS.
 
-🌐 [reaccessible.net](https://reaccessible.net) · 📦 [Download / Télécharger](https://github.com/reaperaccessible/TunerAccess/releases/latest)
+🌐 [reaperaccessible.com](https://reaperaccessible.com) (EN) · [reaperaccessible.fr](https://reaperaccessible.fr) (FR) · 📦 [Download / Télécharger](https://github.com/reaperaccessible/TunerAccess/releases/latest)
 
 **Languages:** [English](#english) · [Français](#français)
 
@@ -76,7 +76,7 @@ Artefacts land in `build/TunerAccess_artefacts/Release/` (`Standalone`, `VST3`, 
 
 ### Credits & license
 
-By **ReaperAccessible**. Windows (NVDA) build by the project owner; macOS (VoiceOver) port by **math65**. See [`installer/data/EULA.txt`](installer/data/EULA.txt) for licensing.
+By **ReaperAccessible** — [reaperaccessible.com](https://reaperaccessible.com). Windows (NVDA) build by the project owner; macOS (VoiceOver) port by **math65**. See [`installer/data/EULA.txt`](installer/data/EULA.txt) for licensing.
 
 ---
 
@@ -144,4 +144,4 @@ Les artefacts se trouvent dans `build/TunerAccess_artefacts/Release/` (`Standalo
 
 ### Crédits et licence
 
-Par **ReaperAccessible**. Build Windows (NVDA) par le propriétaire du projet ; portage macOS (VoiceOver) par **math65**. Voir [`installer/data/EULA.txt`](installer/data/EULA.txt) pour la licence.
+Par **ReaperAccessible** — [reaperaccessible.fr](https://reaperaccessible.fr). Build Windows (NVDA) par le propriétaire du projet ; portage macOS (VoiceOver) par **math65**. Voir [`installer/data/EULA.txt`](installer/data/EULA.txt) pour la licence.

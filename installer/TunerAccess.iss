@@ -2,7 +2,7 @@
 AppName=TunerAccess
 AppVersion=1.02
 AppPublisher=ReaperAccessible
-AppPublisherURL=https://reaccessible.net
+AppPublisherURL=https://reaperaccessible.com
 LicenseFile=data\EULA.txt
 DefaultDirName={autopf}\TunerAccess
 DefaultGroupName=TunerAccess
