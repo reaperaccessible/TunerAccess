@@ -34,6 +34,13 @@ private:
     juce::Label audioDeviceLabel;
     AccessibleComboDropdown audioDeviceCombo;
 
+   #if ! JUCE_WINDOWS
+    // macOS / CoreAudio: input and output are SEPARATE devices, so the standalone
+    // tuner needs an explicit output-device chooser (to hear yourself + lock tone).
+    juce::Label outputDeviceLabel;
+    AccessibleComboDropdown outputDeviceCombo;
+   #endif
+
     juce::Label outputPairLabel;
     AccessibleComboDropdown outputPairCombo;
 
@@ -60,6 +67,11 @@ private:
     void applyOutputPair();
     void applySampleRate();
     void applyBufferSize();
+
+   #if ! JUCE_WINDOWS
+    void populateOutputDevices();
+    void applyOutputDevice();
+   #endif
 
     void changeListenerCallback (juce::ChangeBroadcaster* source) override;
 

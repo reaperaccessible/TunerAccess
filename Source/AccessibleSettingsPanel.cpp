@@ -81,10 +81,23 @@ AccessibleSettingsPanel::AccessibleSettingsPanel (juce::AudioDeviceManager& devi
                  "Select the audio backend (ASIO, DirectSound, WASAPI...). Press Alt+Down to open list.",
                  [this] { applyDeviceType(); });
 
+   #if JUCE_WINDOWS
     addLabelled (audioDeviceLabel,   audioDeviceCombo,
                  "Audio Device:",    "Audio Device",
                  "Select the audio device. Press Alt+Down to open list.",
                  [this] { applyAudioDevice(); });
+   #else
+    // macOS: input and output are separate CoreAudio devices.
+    addLabelled (audioDeviceLabel,   audioDeviceCombo,
+                 "Input Device:",    "Input Device",
+                 "Select the input device — your instrument or microphone.",
+                 [this] { applyAudioDevice(); });
+
+    addLabelled (outputDeviceLabel,  outputDeviceCombo,
+                 "Output Device:",   "Output Device",
+                 "Select the output device — where you hear yourself and the in-tune tone.",
+                 [this] { applyOutputDevice(); });
+   #endif
 
     addLabelled (outputPairLabel,    outputPairCombo,
                  "Output Pair:",     "Output Pair",
@@ -103,6 +116,9 @@ AccessibleSettingsPanel::AccessibleSettingsPanel (juce::AudioDeviceManager& devi
 
     populateDeviceTypes();
     populateAudioDevices();
+   #if ! JUCE_WINDOWS
+    populateOutputDevices();
+   #endif
     populateOutputPairs();
     populateSampleRates();
     populateBufferSizes();
@@ -118,7 +134,11 @@ AccessibleSettingsPanel::AccessibleSettingsPanel (juce::AudioDeviceManager& devi
     };
     addAndMakeVisible (closeButton);
 
-    int rows = 5; // device type + audio device + output + SR + buffer
+   #if JUCE_WINDOWS
+    int rows = 5; // device type + audio device + output pair + SR + buffer
+   #else
+    int rows = 6; // device type + input device + output device + output pair + SR + buffer
+   #endif
     int height = 12 + (30 + 6) * rows + 12 + 32 + 12;
     setSize (520, juce::jmax (height, 320));
 
@@ -188,6 +208,9 @@ void AccessibleSettingsPanel::resized()
 
     layoutRow (deviceTypeLabel,    deviceTypeCombo);
     layoutRow (audioDeviceLabel,   audioDeviceCombo);
+   #if ! JUCE_WINDOWS
+    layoutRow (outputDeviceLabel,  outputDeviceCombo);
+   #endif
     layoutRow (outputPairLabel,    outputPairCombo);
     layoutRow (sampleRateLabel,    sampleRateCombo);
     layoutRow (bufferSizeLabel,    bufferSizeCombo);
@@ -227,9 +250,19 @@ void AccessibleSettingsPanel::populateAudioDevices()
     if (currentType == nullptr)
         return;
 
+   #if JUCE_WINDOWS
+    // ASIO: a single device provides both input and output.
     auto devices = currentType->getDeviceNames (false);
     auto* currentDevice = dm.getCurrentAudioDevice();
     juce::String currentDeviceName = currentDevice ? currentDevice->getName() : "";
+   #else
+    // CoreAudio: input and output are SEPARATE devices. The tuner needs the input
+    // (instrument/mic), so this combo selects the INPUT device.
+    auto devices = currentType->getDeviceNames (true);
+    juce::AudioDeviceManager::AudioDeviceSetup curSetup;
+    dm.getAudioDeviceSetup (curSetup);
+    juce::String currentDeviceName = curSetup.inputDeviceName;
+   #endif
 
     int selectedId = 0;
     for (int i = 0; i < devices.size(); ++i)
@@ -348,6 +381,9 @@ void AccessibleSettingsPanel::applyDeviceType()
         dm.setCurrentAudioDeviceType (name, true);
 
     populateAudioDevices();
+   #if ! JUCE_WINDOWS
+    populateOutputDevices();
+   #endif
     populateOutputPairs();
     populateSampleRates();
     populateBufferSizes();
@@ -358,15 +394,26 @@ void AccessibleSettingsPanel::applyAudioDevice()
     auto* currentType = dm.getCurrentDeviceTypeObject();
     if (currentType == nullptr) return;
 
+   #if JUCE_WINDOWS
     auto devices = currentType->getDeviceNames (false);
+   #else
+    auto devices = currentType->getDeviceNames (true);   // CoreAudio: input devices
+   #endif
     auto idx = audioDeviceCombo.getSelectedItemIndex();
 
     if (idx >= 0 && idx < devices.size())
     {
         juce::AudioDeviceManager::AudioDeviceSetup setup;
         dm.getAudioDeviceSetup (setup);
+       #if JUCE_WINDOWS
+        // ASIO: one device name for both directions.
         setup.outputDeviceName = devices[idx];
         setup.inputDeviceName  = devices[idx];
+       #else
+        // CoreAudio: set ONLY the input device. Assigning an input-only name to the
+        // output (or vice-versa) makes setAudioDeviceSetup fail with "No such device".
+        setup.inputDeviceName  = devices[idx];
+       #endif
         auto result = dm.setAudioDeviceSetup (setup, true);
 
         // Re-apply the active input preset (re-routes channels for new device).
@@ -383,6 +430,64 @@ void AccessibleSettingsPanel::applyAudioDevice()
         }
     }
 }
+
+#if ! JUCE_WINDOWS
+void AccessibleSettingsPanel::populateOutputDevices()
+{
+    outputDeviceCombo.clear();
+
+    auto* currentType = dm.getCurrentDeviceTypeObject();
+    if (currentType == nullptr)
+        return;
+
+    auto devices = currentType->getDeviceNames (false);   // CoreAudio: output devices
+    juce::AudioDeviceManager::AudioDeviceSetup curSetup;
+    dm.getAudioDeviceSetup (curSetup);
+    juce::String currentName = curSetup.outputDeviceName;
+
+    int selectedId = 0;
+    for (int i = 0; i < devices.size(); ++i)
+    {
+        outputDeviceCombo.addItem (devices[i], i + 1);
+        if (devices[i] == currentName)
+            selectedId = i + 1;
+    }
+
+    if (selectedId > 0)
+        outputDeviceCombo.setSelectedId (selectedId);
+    else if (outputDeviceCombo.getNumItems() > 0)
+        outputDeviceCombo.setSelectedId (1);
+}
+
+void AccessibleSettingsPanel::applyOutputDevice()
+{
+    auto* currentType = dm.getCurrentDeviceTypeObject();
+    if (currentType == nullptr) return;
+
+    auto devices = currentType->getDeviceNames (false);   // output devices
+    auto idx = outputDeviceCombo.getSelectedItemIndex();
+
+    if (idx >= 0 && idx < devices.size())
+    {
+        juce::AudioDeviceManager::AudioDeviceSetup setup;
+        dm.getAudioDeviceSetup (setup);
+        setup.outputDeviceName = devices[idx];     // set ONLY the output; leave input
+        setup.useDefaultOutputChannels = true;
+        auto result = dm.setAudioDeviceSetup (setup, true);
+
+        proc.applyActiveInput (&dm);
+        populateOutputPairs();
+        populateSampleRates();
+        populateBufferSizes();
+
+        if (result.isNotEmpty())
+        {
+            AccessibleComboDropdown::screenReaderAnnounceNow ("Error: " + result);
+            populateOutputDevices();
+        }
+    }
+}
+#endif
 
 
 void AccessibleSettingsPanel::applyOutputPair()
@@ -447,6 +552,9 @@ void AccessibleSettingsPanel::applyBufferSize()
 
 void AccessibleSettingsPanel::changeListenerCallback (juce::ChangeBroadcaster*)
 {
+   #if ! JUCE_WINDOWS
+    populateOutputDevices();
+   #endif
     populateOutputPairs();
     populateSampleRates();
     populateBufferSizes();
