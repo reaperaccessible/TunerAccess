@@ -1,0 +1,43 @@
+﻿CONTRAT DE LICENCE UTILISATEUR FINAL (CLUF)
+
+En installant ou en utilisant TunerAccess, vous approuvez le Contrat de Licence Utilisateur Final ci-dessous.
+
+Ce Contrat de Licence Utilisateur Final (ci-après le « CLUF ») est un accord juridique entre vous (l'« Utilisateur ») et ReaperAccessible (le « Propriétaire ») pour l'utilisation de TunerAccess (le « Logiciel »). En installant, copiant ou utilisant le Logiciel, l'Utilisateur accepte d'être lié par les conditions générales du présent CLUF.
+
+1. LICENCE DE L'UTILISATEUR
+
+Sous réserve du respect des conditions du présent CLUF, le Propriétaire, ReaperAccessible, accorde à l'Utilisateur une licence non exclusive d'utilisation du Logiciel.
+
+2. RESTRICTIONS
+
+a) L'Utilisateur ne peut pas copier, modifier, distribuer, vendre ou louer le Logiciel, en tout ou en partie.
+b) L'Utilisateur ne peut pas contourner ni tenter de contourner les mesures de sécurité intégrées au Logiciel.
+
+3. PROPRIÉTÉ
+
+Le Logiciel et tous les droits de propriété intellectuelle associés demeurent la propriété exclusive de ReaperAccessible. Le présent CLUF n'accorde aucun droit de propriété sur le Logiciel, à l'exception de ceux expressément prévus dans les présentes.
+
+4. DURÉE ET RÉSILIATION
+
+Le présent CLUF prend effet à l'installation du Logiciel et demeure en vigueur jusqu'à sa résiliation. ReaperAccessible se réserve le droit de résilier le présent CLUF à tout moment en cas de violation de ses conditions par l'Utilisateur. À la résiliation, l'Utilisateur doit cesser toute utilisation du Logiciel et détruire toutes les copies en sa possession.
+
+5. LIMITATION DE RESPONSABILITÉ
+
+Dans toute la mesure permise par la loi applicable, ReaperAccessible ne pourra être tenu responsable de tout dommage direct, indirect, spécial, consécutif ou punitif découlant de l'utilisation ou de l'impossibilité d'utiliser le Logiciel.
+
+6. DISPOSITIONS GÉNÉRALES
+
+a) Le présent CLUF constitue l'intégralité de l'accord entre les parties concernant l'utilisation du Logiciel et remplace tout accord antérieur ou contemporain.
+b) Le présent CLUF est régi et interprété conformément aux lois du Canada. Tout litige découlant du présent CLUF sera soumis à la compétence exclusive des tribunaux de la province de Québec.
+c) Si une disposition du présent CLUF est jugée invalide ou inapplicable par un tribunal compétent, les dispositions restantes demeureront pleinement en vigueur.
+d) Le fait que ReaperAccessible n'exerce pas un droit ou un recours prévu au présent CLUF ne constitue pas une renonciation à ce droit ou recours.
+
+7. CONTACT
+
+Pour toute question concernant le présent CLUF, veuillez contacter ReaperAccessible via le site web officiel.
+
+En installant, copiant ou utilisant le Logiciel, l'Utilisateur reconnaît avoir lu, compris et accepté les conditions générales du présent CLUF.
+
+AVIS RELATIF AUX MARQUES DE COMMERCE
+
+Tous les noms de produits appartenant à d'autres fabricants sont des marques de commerce de leurs propriétaires respectifs, qui ne sont en aucune façon associés ou affiliés à ReaperAccessible.

@@ -3,7 +3,6 @@ AppName=TunerAccess
 AppVersion=1.03
 AppPublisher=ReaperAccessible
 AppPublisherURL=https://reaperaccessible.com
-LicenseFile=data\EULA.txt
 DefaultDirName={autopf}\TunerAccess
 DefaultGroupName=TunerAccess
 OutputDir=output
@@ -18,8 +17,9 @@ PrivilegesRequired=admin
 WizardStyle=modern
 
 [Languages]
-Name: "english"; MessagesFile: "compiler:Default.isl"
-Name: "french"; MessagesFile: "compiler:Languages\French.isl"
+; Per-language license: the EULA shown adapts to the language the user selects.
+Name: "english"; MessagesFile: "compiler:Default.isl";            LicenseFile: "data\EULA.txt"
+Name: "french";  MessagesFile: "compiler:Languages\French.isl";   LicenseFile: "data\EULA_fr.txt"
 
 [CustomMessages]
 ; English
