@@ -27,6 +27,15 @@ public:
     int getSelectedItemIndex() const;
     juce::String getText() const { return currentText; }
 
+   #if ! JUCE_WINDOWS
+    // macOS / VoiceOver: in-place adjustable interaction (no dropdown window, no
+    // list/table). Arrows / VO+Up/Down browse + announce; Enter / VO+Space commits.
+    void browseTo (int index);
+    void commitPending();
+    int getBrowseIndex() const { return pendingIndex; }
+    juce::String getBrowseText() const;
+   #endif
+
     std::function<void()> onConfirm;
 
     void paint (juce::Graphics& g) override;
@@ -62,6 +71,13 @@ private:
     void openDropdown();
     void closeDropdown (bool confirm);
     void announceItem (int index);
+
+   #if ! JUCE_WINDOWS
+    // macOS / VoiceOver in-place adjustable model: browse cursor that is only
+    // applied on commit (Enter / VO+Space), so audio settings don't re-init on
+    // every arrow step.
+    int pendingIndex = -1;
+   #endif
 
 public:
     static void screenReaderAnnounce (const juce::String& text);

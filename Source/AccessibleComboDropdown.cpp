@@ -170,7 +170,8 @@ void AccessibleComboDropdown::screenReaderAnnounce (const juce::String& text)
     else
         comboUiaRaiseNotification (text);
 #else
-    juce::ignoreUnused (text);
+    juce::AccessibilityHandler::postAnnouncement (text,
+        juce::AccessibilityHandler::AnnouncementPriority::medium);
 #endif
 }
 
@@ -183,7 +184,8 @@ void AccessibleComboDropdown::screenReaderAnnounceNow (const juce::String& text)
     else
         comboUiaRaiseNotification (text);
 #else
-    juce::ignoreUnused (text);
+    juce::AccessibilityHandler::postAnnouncement (text,
+        juce::AccessibilityHandler::AnnouncementPriority::high);
 #endif
 }
 
@@ -229,6 +231,9 @@ void AccessibleComboDropdown::setSelectedId (int itemId, juce::NotificationType)
         {
             currentId = itemId;
             currentText = items[(size_t) i].text;
+           #if ! JUCE_WINDOWS
+            pendingIndex = i;
+           #endif
             repaint();
             return;
         }
@@ -272,6 +277,19 @@ void AccessibleComboDropdown::resized()
 
 bool AccessibleComboDropdown::keyPressed (const juce::KeyPress& key)
 {
+   #if ! JUCE_WINDOWS
+    // macOS / VoiceOver: in-place adjustable value — no dropdown window, no table.
+    // Arrows browse + announce (without applying); Enter commits and applies.
+    // VoiceOver's VO+Up/Down routes through the value interface's setValue() ->
+    // browseTo(), and VO+Space routes through the press action -> commitPending().
+    const auto kc = key.getKeyCode();
+    if (kc == juce::KeyPress::downKey)   { browseTo (pendingIndex + 1);             return true; }
+    if (kc == juce::KeyPress::upKey)     { browseTo (pendingIndex - 1);             return true; }
+    if (kc == juce::KeyPress::homeKey)   { browseTo (0);                            return true; }
+    if (kc == juce::KeyPress::endKey)    { browseTo ((int) items.size() - 1);       return true; }
+    if (kc == juce::KeyPress::returnKey) { commitPending();                         return true; }
+    return false;
+   #else
     if (key.getKeyCode() == juce::KeyPress::downKey && key.getModifiers().isAltDown())
     {
         if (! dropdownOpen)
@@ -293,21 +311,29 @@ bool AccessibleComboDropdown::keyPressed (const juce::KeyPress& key)
     }
 
     return false;
+   #endif
 }
 
 void AccessibleComboDropdown::focusGained (FocusChangeType)
 {
+   #if JUCE_WINDOWS
     screenReaderAnnounce (getName() + ", " + (currentText.isEmpty() ? "no selection" : currentText)
                           + ". Press Alt+Down to open list.");
+   #else
+    screenReaderAnnounce (getName() + ", " + (currentText.isEmpty() ? "no selection" : currentText)
+                          + ". Use up and down arrows to change, Enter to apply.");
+   #endif
     repaint();
 }
 
 std::unique_ptr<juce::AccessibilityHandler> AccessibleComboDropdown::createAccessibilityHandler()
 {
-    // Explicit comboBox role + ValueInterface so braille shows the current selection
-    // persistently on focus. Without this, the closed combo defaulted to
-    // role=unspecified with NO ValueInterface, matching the silent-on-focus condition
-    // documented in nvda_silent_roles_on_focus.md and braille_display_implementation.md.
+   #if JUCE_WINDOWS
+    // Windows / NVDA: explicit comboBox role + read-only ValueInterface so braille
+    // shows the current selection persistently on focus. Without this, the closed
+    // combo defaulted to role=unspecified with NO ValueInterface, matching the
+    // silent-on-focus condition documented in nvda_silent_roles_on_focus.md and
+    // braille_display_implementation.md. The dropdown opens via Alt+Down (ListBox).
     struct ClosedComboValue : public juce::AccessibilityTextValueInterface
     {
         explicit ClosedComboValue (std::function<juce::String()> g) : getter (std::move (g)) {}
@@ -327,6 +353,48 @@ std::unique_ptr<juce::AccessibilityHandler> AccessibleComboDropdown::createAcces
                 return currentText.isEmpty() ? juce::String ("no selection") : currentText;
             })
         });
+   #else
+    // macOS / VoiceOver: an in-place adjustable combo box (role comboBox, NOT slider —
+    // the user does not want a slider) with a writable, RANGED value interface. The
+    // in-place "adjustable" behaviour (VO+Up/Down cycles items, setValue -> browseTo) is
+    // ROLE-INDEPENDENT in JUCE: it is gated only on a non-read-only value interface with a
+    // valid range (juce_Accessibility_mac.mm), so comboBox keeps the combo announcement
+    // AND the arrow-adjust UX. Each item's TEXT is read — no popup window, no list/table.
+    // We must derive from the BASE AccessibilityValueInterface: the convenience subclasses
+    // make getRange()/getCurrentValueAsString() final, which would block either
+    // adjustability or text speech. VO+Space (press action) commits/applies.
+    struct ComboValue : public juce::AccessibilityValueInterface
+    {
+        explicit ComboValue (AccessibleComboDropdown& o) : owner (o) {}
+
+        bool   isReadOnly()      const override { return false; }
+        double getCurrentValue() const override { return (double) juce::jmax (0, owner.getBrowseIndex()); }
+        juce::String getCurrentValueAsString() const override
+        {
+            auto t = owner.getBrowseText();
+            return t.isEmpty() ? juce::String ("no selection") : t;
+        }
+        void setValue (double newValue) override            { owner.browseTo (juce::roundToInt (newValue)); }
+        void setValueAsString (const juce::String&) override {}
+        AccessibleValueRange getRange() const override
+        {
+            const int n = owner.getNumItems();
+            if (n <= 1) return {};                                        // invalid -> not adjustable
+            return AccessibleValueRange ({ 0.0, (double) (n - 1) }, 1.0); // valid -> VO+Up/Down adjusts
+        }
+
+        AccessibleComboDropdown& owner;
+    };
+
+    return std::make_unique<juce::AccessibilityHandler>(
+        *this,
+        juce::AccessibilityRole::comboBox,
+        juce::AccessibilityActions{}.addAction (juce::AccessibilityActionType::press,
+                                                [this] { commitPending(); }),
+        juce::AccessibilityHandler::Interfaces {
+            std::make_unique<ComboValue> (*this)
+        });
+   #endif
 }
 
 void AccessibleComboDropdown::openDropdown()
@@ -393,6 +461,58 @@ void AccessibleComboDropdown::closeDropdown (bool confirm)
     grabKeyboardFocus();
     repaint();
 }
+
+#if ! JUCE_WINDOWS
+juce::String AccessibleComboDropdown::getBrowseText() const
+{
+    if (pendingIndex >= 0 && pendingIndex < (int) items.size())
+        return items[(size_t) pendingIndex].text;
+    return currentText;
+}
+
+void AccessibleComboDropdown::browseTo (int index)
+{
+    if (items.empty())
+        return;
+
+    const int clamped = juce::jlimit (0, (int) items.size() - 1, index);
+    if (clamped == pendingIndex)
+        return;
+
+    // Move the browse cursor and announce the candidate WITHOUT applying it, so
+    // audio settings don't re-initialise on every arrow step.
+    pendingIndex = clamped;
+    repaint();
+
+    const auto& it = items[(size_t) pendingIndex];
+    screenReaderAnnounce (it.text + ", " + juce::String (pendingIndex + 1)
+                          + " of " + juce::String ((int) items.size()));
+
+    if (auto* h = getAccessibilityHandler())
+        h->notifyAccessibilityEvent (juce::AccessibilityEvent::valueChanged);
+}
+
+void AccessibleComboDropdown::commitPending()
+{
+    if (pendingIndex < 0 || pendingIndex >= (int) items.size())
+        return;
+
+    const auto& it = items[(size_t) pendingIndex];
+    const bool changed = (it.id != currentId);
+
+    currentId   = it.id;
+    currentText = it.text;
+    repaint();
+
+    screenReaderAnnounceNow (currentText + " selected");
+
+    if (changed && onConfirm)
+        onConfirm();
+
+    if (auto* h = getAccessibilityHandler())
+        h->notifyAccessibilityEvent (juce::AccessibilityEvent::valueChanged);
+}
+#endif
 
 void AccessibleComboDropdown::announceItem (int index)
 {
