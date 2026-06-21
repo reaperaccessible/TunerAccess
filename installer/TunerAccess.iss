@@ -1,13 +1,13 @@
 [Setup]
 AppName=TunerAccess
-AppVersion=1.01
+AppVersion=1.02
 AppPublisher=ReaperAccessible
 AppPublisherURL=https://reaccessible.net
 LicenseFile=data\EULA.txt
 DefaultDirName={autopf}\TunerAccess
 DefaultGroupName=TunerAccess
 OutputDir=output
-OutputBaseFilename=ReaperAccessible_TunerAccess_1.01_Setup
+OutputBaseFilename=ReaperAccessible_TunerAccess_1.02_Setup
 Compression=lzma2/ultra64
 SolidCompression=yes
 DiskSpanning=no
