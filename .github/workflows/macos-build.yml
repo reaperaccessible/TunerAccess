@@ -1,0 +1,92 @@
+name: macOS Build
+
+# Builds the macOS artefacts (Standalone .app, VST3, Audio Unit) on a GitHub
+# macOS runner and attaches a .zip to the release. Unsigned — see INSTALL-macOS.txt
+# in the package for the quarantine-removal step. For signed/notarized distribution,
+# add a Developer ID cert + notarytool creds as repo secrets and extend this file.
+
+on:
+  # Auto-build + attach whenever a release is published.
+  release:
+    types: [published]
+  # Manual run. Optionally attach to an existing release via release_tag.
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Existing release tag to attach the build to (e.g. v1.02). Leave blank for artifact only.'
+        required: false
+        default: ''
+
+permissions:
+  contents: write   # needed for "gh release upload"
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure (Xcode generator)
+        run: cmake -B build -G Xcode
+
+      - name: Build Release (VST3 + AU + Standalone)
+        run: cmake --build build --config Release --parallel
+
+      - name: Package artefacts
+        run: |
+          set -euo pipefail
+          ART="build/TunerAccess_artefacts/Release"
+          STAGE="TunerAccess-macOS"
+          rm -rf "$STAGE" && mkdir -p "$STAGE"
+
+          [ -d "$ART/Standalone/TunerAccess.app" ]  && cp -R "$ART/Standalone/TunerAccess.app"  "$STAGE/"
+          [ -d "$ART/VST3/TunerAccess.vst3" ]       && cp -R "$ART/VST3/TunerAccess.vst3"       "$STAGE/"
+          [ -d "$ART/AU/TunerAccess.component" ]    && cp -R "$ART/AU/TunerAccess.component"    "$STAGE/"
+          [ -f "Docs/TunerAccess_Manual.html" ]     && cp "Docs/TunerAccess_Manual.html"        "$STAGE/"
+
+          cat > "$STAGE/INSTALL-macOS.txt" <<'EOF'
+          TunerAccess for macOS (unsigned build)
+          ======================================
+
+          This package contains:
+            - TunerAccess.app        -> drag to /Applications
+            - TunerAccess.vst3       -> copy to ~/Library/Audio/Plug-Ins/VST3/
+            - TunerAccess.component  -> copy to ~/Library/Audio/Plug-Ins/Components/   (Audio Unit)
+            - TunerAccess_Manual.html
+
+          Because this build is not signed/notarized, macOS Gatekeeper will block it
+          on first launch. After copying the bundles, remove the quarantine flag:
+
+            xattr -dr com.apple.quarantine /Applications/TunerAccess.app
+            xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/TunerAccess.vst3
+            xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/Components/TunerAccess.component
+
+          Then launch the app, or rescan plugins in your DAW. Grant microphone access
+          when prompted (System Settings > Privacy & Security > Microphone).
+          EOF
+
+          # ditto preserves bundle structure / symlinks (zip can corrupt .app bundles).
+          ditto -c -k --sequesterRsrc --keepParent "$STAGE" TunerAccess-macOS.zip
+          ls -la TunerAccess-macOS.zip
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TunerAccess-macOS
+          path: TunerAccess-macOS.zip
+
+      - name: Determine target release tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "tag=${{ github.event.release.tag_name }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${{ github.event.inputs.release_tag }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Attach to release
+        if: steps.tag.outputs.tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ steps.tag.outputs.tag }}" TunerAccess-macOS.zip --clobber
